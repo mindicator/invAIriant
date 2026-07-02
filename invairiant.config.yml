@@ -1,0 +1,54 @@
+# invAIriant auditing itself — the framework is its own first subject.
+# Validates against schemas/invairiant.config.schema.json.
+
+project:
+  name: invairiant
+  type: protocol-framework
+  description: >
+    The invAIriant audit protocol: docs, lens library, schemas, templates,
+    prompt pack, the /invairiant agent skill, and a narrow helper CLI.
+
+canonical_docs:
+  - README.md
+  - docs/methodology.md
+  - docs/evidence-rules.md
+  - docs/severity-model.md
+  - docs/lens-taxonomy.md
+  - docs/cli.md
+  - CONTRIBUTING.md
+
+# A protocol framework, not a running system: the assets are its own integrity.
+mandatory_lenses:
+  - mcconnell          # doc/construction synchrony across a large doc surface
+  - parnas             # skill / schema / CLI boundaries; CLI-serves-not-audits
+  - brooks             # one coherent story (primary skill, helper CLI)
+  - dijkstra           # simplicity; the anti-overengineering canon
+  - kernighan          # the docs and CLI are operable under pressure
+  - security-threat    # the CLI subprocess surface; secrets never in the repo
+
+optional_lens_packs:
+  - implementation
+
+critical_lenses:
+  - security-threat
+
+risk_assets:
+  - protocol integrity (no-evidence-no-finding cannot be bypassed)
+  - doc / schema / prompt consistency
+  - the CLI-serves-the-audit-never-performs-it boundary
+
+evidence:
+  require_file_or_diff_reference: true
+  allow_observations_without_evidence: true
+  allow_findings_without_evidence: false
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: INV
+
+audit:
+  report_dir: docs/audits
+  cadence:
+    tactical: monthly
+    full_scale: per milestone

@@ -32,8 +32,8 @@ jobs:
 
       - name: CLI smoke test (validate-config / validate-report)
         run: |
-          python3 cli/invairiant.py validate-config examples/*/invairiant.config.yml
-          python3 cli/invairiant.py validate-report examples/infra-service/example-report.json
+          python3 cli/invairiant.py validate-config invairiant.config.yml examples/*/invairiant.config.yml
+          python3 cli/invairiant.py validate-report examples/infra-service/example-report.json docs/audits/2026-07-03-self-audit.json
 
       - name: CLI smoke test (ci-gate must FAIL on the S0 example)
         run: |

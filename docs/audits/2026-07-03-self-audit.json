@@ -1,0 +1,90 @@
+{
+  "title": "invAIriant self-audit — the framework as its own first subject",
+  "date": "2026-07-03",
+  "audit_type": "full-scale",
+  "project": {
+    "name": "invairiant",
+    "type": "protocol-framework",
+    "commit_range": "db64b5d",
+    "phase": "v0.1"
+  },
+  "scope": "The invAIriant framework at db64b5d, audited as a software artifact: docs, lens library, schemas, prompts, templates, skill, cli, examples, CI. In scope: internal consistency, boundaries, and whether the framework upholds its own rules. Out of scope: the subjective quality of individual lens *content*, and the fictional example project (conveyor).",
+  "inputs_reviewed": [
+    "repo @ db64b5d",
+    "internal markdown link integrity: 139 relative links checked, 0 broken",
+    "schemas/*.json",
+    "cli/invairiant.py",
+    "scripts/validate_framework.py",
+    "examples/infra-service/{example-audit.md,example-report.json}",
+    "CI runs (Validate Framework, green on db64b5d)"
+  ],
+  "participants": [
+    "fable-agent (single-agent run: lens passes, evidence verification, severity, synthesis)",
+    "mindicator (owner, gates)"
+  ],
+  "config_ref": "invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "core", "lens": "parnas", "score": 9, "verdict": "Skill / schema / CLI boundaries are explicit and upheld in code: cli/invairiant.py runs no lens, produces no finding, assigns no score (docs/cli.md boundary is real, not just stated)." },
+    { "pack": "core", "lens": "mcconnell", "score": 8, "verdict": "Docs stay synchronized across a large surface (139/139 internal links resolve; CHANGELOG maintained). One debt item: config lens ids are not cross-checked against the library (INV-001)." },
+    { "pack": "core", "lens": "brooks", "score": 8, "verdict": "One coherent story after repositioning: primary skill, secondary protocol layer, helper CLI; the anti-overengineering canon (4-6 lenses) is stated and practiced." },
+    { "pack": "core", "lens": "dijkstra", "score": 8, "verdict": "Negative space is explicit and enforced: the 'CLI must not audit' constraint is a stated non-goal and true in cli/invairiant.py." },
+    { "pack": "implementation", "lens": "kernighan", "score": 7, "verdict": "Docs and CLI are operable (argparse --help, _die messages carry context). Gap: a typo'd config lens id fails late (at audit time) instead of at validate-config time (INV-001)." },
+    { "pack": "security-safety", "lens": "security-threat", "score": 8, "verdict": "Small, controlled surface: collect-evidence resolves adapters through a fixed registry and runs list-form subprocesses (no shell); no secrets in the repo; the authorship hook is local-only." }
+  ],
+  "findings": [
+    {
+      "id": "INV-001",
+      "severity": "S2",
+      "lens": "mcconnell",
+      "claim": "Nothing cross-checks that a config's mandatory_lenses name lenses that actually exist; a typo passes validation but has no lens file, so the audit silently cannot run that lens.",
+      "evidence": [
+        { "type": "file_lines", "file": "schemas/invairiant.config.schema.json", "lines": "28-33", "description": "mandatory_lenses items are constrained only by a kebab-case pattern, not by existence in the lens library" },
+        { "type": "missing_test", "description": "neither scripts/validate_framework.py nor cli/invairiant.py validate-config cross-references mandatory_lenses (or critical_lenses) against lenses/*/*.md; a typo like 'mcconel' passes validate-config" }
+      ],
+      "risk": "A config can reference a dead lens id and pass every check; the omission surfaces only mid-audit, weakening the tooling's role as a safety net around the agentic audit.",
+      "recommendation": "Add a referential-integrity check (config mandatory_lenses/critical_lenses ⊆ known lens ids) to validate_framework.py and to `invairiant validate-config`, sourcing the id set from lenses/*/*.md.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["schemas", "scripts/validate_framework.py", "cli/invairiant.py"],
+      "verification": { "verified_by": "fable-agent", "method": "read the schema block; grepped scripts/ and cli/ for any mandatory_lenses existence check — none found", "notes": "pattern-only validation confirmed" }
+    },
+    {
+      "id": "INV-002",
+      "severity": "S3",
+      "lens": "mcconnell",
+      "category": "DOC_CODE_DRIFT",
+      "claim": "The example report JSON references findings CNV-043 and CNV-044 in its lens verdicts and executive summary but never defines them in findings[]; only CNV-041/042 exist there, while the prose example defines CNV-041..044.",
+      "evidence": [
+        { "type": "file_lines", "file": "examples/infra-service/example-report.json", "lines": "29-32", "description": "lens_scores verdicts cite CNV-044 (line 29) and CNV-043 (line 32), neither present in findings[]" },
+        { "type": "doc_code_contradiction", "doc": "examples/infra-service/example-audit.md", "code": "examples/infra-service/example-report.json", "description": "the prose report defines CNV-041 through CNV-044 as full findings; the JSON's findings[] holds only CNV-041 and CNV-042" }
+      ],
+      "risk": "A reader diffing the two example artifacts sees dangling finding ids; as the canonical machine-readable sample it should be internally complete. Low impact — example fixtures only.",
+      "recommendation": "Either add CNV-043/CNV-044 as full findings in the JSON to match the prose, or reword the lens verdicts/summary to not cite ids the JSON does not define.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["examples/infra-service"],
+      "verification": { "verified_by": "fable-agent", "method": "parsed findings[] ids ([CNV-041, CNV-042]); grepped CNV-043/044 (lines 29, 32, 82); cross-read example-audit.md", "notes": "confirmed" }
+    }
+  ],
+  "observations": [
+    { "text": "Coverage asymmetry: scripts/validate_framework.py validates example-findings.json against the finding schema but not example-report.json against the audit-report schema; the report schema is only exercised by the CLI smoke test in CI. Not a defect (CI covers it), but the validator and the CLI check overlapping-yet-different subsets.", "lens": "mcconnell", "follow_up": "optionally add a report check to validate_framework.py, or document the split of duties." },
+    { "text": "Good-state: internal link integrity is clean — 139/139 relative markdown links resolve at db64b5d.", "lens": "mcconnell" },
+    { "text": "Good-state: no origin-project (the origin project) jargon leaks into the generic framework; the only mentions are the README origins note and lenses/domain/network-persistence.md, by design.", "lens": "parnas" }
+  ],
+  "hypotheses": [
+    { "text": "Security concern investigated: could a hostile invairiant.config.yml make `invairiant collect-evidence` run arbitrary commands?", "lens": "security-threat", "rejected_reason": "Refuted — adapters resolve only through the fixed _ADAPTERS registry in cli/invairiant.py; unknown names are skipped, and subprocess.run uses list form (shell=False). The config selects which known tools run, not what command." }
+  ],
+  "summary": {
+    "verdict": "pass",
+    "executive_summary": "The invAIriant framework holds together as its own first subject. Boundaries are the strongest dimension: the CLI genuinely serves the audit without performing it, and the primary/secondary/helper story is coherent. Documentation is clean (139/139 links resolve; no jargon leak). No S0 or S1 findings. Two debt items: the tooling does not cross-check that config lens ids exist (INV-001, S2), and the example report JSON cites two finding ids it never defines (INV-002, S3). Verdict: pass, with the two items scheduled.",
+    "strongest_lens": "parnas",
+    "weakest_lens": "kernighan",
+    "weakest_reason": "the only operability gap of note is that a mistyped mandatory_lens is not caught at validate-config time and fails late during the audit (INV-001)",
+    "required_actions": [
+      { "action": "Add a config↔lens-library referential-integrity check to validate_framework.py and `invairiant validate-config`.", "finding_ids": ["INV-001"], "owner": "mindicator", "blocking": false },
+      { "action": "Reconcile example-report.json with example-audit.md (define CNV-043/044 or stop citing them).", "finding_ids": ["INV-002"], "owner": "mindicator", "blocking": false }
+    ]
+  }
+}
