@@ -1,0 +1,92 @@
+{
+  "title": "invAIriant Audit — refund-agent PR #218 (agent-executed refunds)",
+  "date": "2026-07-02",
+  "audit_type": "pr",
+  "project": {
+    "name": "refund-agent",
+    "type": "ai-agent-system",
+    "commit_range": "main..c7d1e9a",
+    "branch": "feat/agent-refund-e2e"
+  },
+  "scope": "PR #218, which changes agent/refund_tool.py from drafting a reply for human review to deciding and executing refunds against the payment provider in one pass. Audited against docs/agent-decision-boundary.md and docs/ARCHITECTURE.md. Out of scope: the chat/LLM transport, the payments provider SDK internals, and unrelated ticket-triage code.",
+  "inputs_reviewed": [
+    "diff main..c7d1e9a (PR #218, +34/-6)",
+    "agent/refund_tool.py @ c7d1e9a",
+    "payments/provider.py @ c7d1e9a",
+    "docs/agent-decision-boundary.md @ c7d1e9a",
+    "tests/agent/test_refund_tool.py @ c7d1e9a",
+    "pytest ./tests/agent @ c7d1e9a"
+  ],
+  "participants": [
+    "claude-agent (lens auditor: oracle-boundary, leveson, parnas, turing)",
+    "claude-agent-2 (evidence verifier)"
+  ],
+  "config_ref": "case-studies/ai-agent-refund-bot/invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "ai-generated-code", "lens": "oracle-boundary", "score": 2, "verdict": "model output (amount_cents) flows directly into a money-movement call with no schema bound, allowlist, or deterministic cap between model and provider (RB-001)", "evidence_refs": ["RB-001"] },
+    { "pack": "security-safety", "lens": "leveson", "score": 3, "verdict": "the execute action is unsafe in most states (no per-ticket cap, no human approval in the executing path, no reversibility bound) and nothing in code prevents it being issued there (RB-002)", "evidence_refs": ["RB-002"] },
+    { "pack": "core", "lens": "parnas", "score": 6, "verdict": "the tool boundary itself is clean; the defect is what crosses it, not module coupling (obs O-1)" },
+    { "pack": "core", "lens": "turing", "score": 3, "verdict": "the JSON-decode fallback retries once and then raises; the uncertain/garbage/contradiction path has no typed outcome (RB-001 evidence, obs O-2)" }
+  ],
+  "findings": [
+    {
+      "id": "RB-001",
+      "severity": "S0",
+      "lens": "oracle-boundary",
+      "category": "UNVALIDATED_ORACLE_OUTPUT",
+      "claim": "The refund amount comes straight from the LLM's JSON output and is passed to the payment provider's refund call with no schema validation, bounds check, or allowlist between the model and the money movement.",
+      "evidence": [
+        { "type": "file_lines", "file": "agent/refund_tool.py", "lines": "41-52", "commit": "c7d1e9a", "description": "StripeClient().refund(charge_id=order.charge_id, amount_cents=decision[\"amount_cents\"], ...) — decision[\"amount_cents\"] is parsed from raw model text and used unmodified; no clamp to order total, no per-ticket cap, no allowlist of reasons" },
+        { "type": "diff_hunk", "hunk": "-def draft_refund_reply(ticket: Ticket, order: Order) -> str:\n-    reasoning = chat(REFUND_PROMPT, ticket=ticket, order=order)\n-    return reasoning  # human decides + executes the refund in the console\n+def decide_and_refund(ticket: Ticket, order: Order) -> RefundResult:\n+    raw = chat(REFUND_PROMPT, ticket=ticket, order=order)\n+    decision = json.loads(raw)\n+    result = StripeClient().refund(charge_id=order.charge_id, amount_cents=decision[\"amount_cents\"], idempotency_key=None, ...)" },
+        { "type": "doc_code_contradiction", "doc": "docs/agent-decision-boundary.md:14", "code": "agent/refund_tool.py:41-52", "description": "The boundary doc lists the agent as allowed to 'recommend a refund and draft a reply' and lists 'issuing or executing a refund' under decisions that 'remain deterministic / human-owned'; the code executes the refund directly from model output" },
+        { "type": "missing_test", "description": "tests/agent/test_refund_tool.py exercises only a well-formed decision from a mocked model (refund=true, amount within order total); no test feeds an over-order-total amount, a negative amount, a non-JSON response after the single retry, or a hostile 'reason'" }
+      ],
+      "risk": "A model regression, prompt injection embedded in a ticket, or ordinary hallucination moves real customer funds in an amount the model chose: refunds above the order total, refunds on already-refunded charges, or attacker-directed amounts. The effective refund-authority contract is whatever the model emits on any given request.",
+      "recommendation": "Insert a deterministic validation layer between the model and the provider: parse into a typed RefundDecision, reject non-conforming output as a typed ModelRejected outcome, clamp amount_cents to the remaining refundable balance on the charge, enforce a per-ticket and per-day cap, and allowlist the reason codes. Only a validated, bounded decision may reach StripeClient().refund. Add tests for over-total, negative, non-JSON, and injected-reason model outputs.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "hybrid",
+      "affected_components": ["agent", "payments"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read agent/refund_tool.py:41-52 and the decode path at 22-33; grepped agent/ and payments/ for clamp/cap/max_refund/allowlist (0 hits on the executing path); cross-read docs/agent-decision-boundary.md:14; ran pytest tests/agent — only the happy-path case exists", "notes": "money moves on unvalidated model output; boundary doc explicitly forbids it" }
+    },
+    {
+      "id": "RB-002",
+      "severity": "S1",
+      "lens": "leveson",
+      "category": "UNBOUNDED_AUTHORITY",
+      "claim": "The refund execution has no bounded authority and no human confirmation on the executing path: nothing in code limits the amount, rate, or blast radius of an automated refund, and the action is issued unconditionally once the model says refund=true.",
+      "evidence": [
+        { "type": "file_lines", "file": "agent/refund_tool.py", "lines": "36-52", "commit": "c7d1e9a", "description": "The branch on decision.get(\"refund\") goes directly to StripeClient().refund with no approval gate, no per-window action limit, and no check of order state (already refunded, disputed, chargeback in flight)" },
+        { "type": "doc_code_contradiction", "doc": "docs/agent-decision-boundary.md:22", "code": "agent/refund_tool.py:36-52", "description": "The boundary doc states 'any money movement requires a human approve step in the console before execution'; the executing path in the PR contains no such step" },
+        { "type": "missing_test", "description": "No test asserts that a refund above a configured cap, or on an already-refunded charge, is refused; no test exercises an approval/kill-switch gate because none exists" }
+      ],
+      "risk": "One bad decision is unbounded: there is no cap per ticket, no rate limit per window, and no reversibility check, so a single prompt-injected or hallucinated ticket can drain funds up to the full charge on every order the agent touches, with no operator interruption in the loop.",
+      "recommendation": "Make refund authority explicit and enforced in code: a hard per-ticket and per-window cap, a check that the charge is refundable and not disputed, and a human approve step for any amount above a low auto-approve threshold. Add an operator-visible action log and a kill switch that halts issuance. Cover the cap, already-refunded, and above-threshold-requires-approval paths with tests.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["agent", "payments"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read agent/refund_tool.py:36-52; confirmed no approval gate, cap, or state re-check on the executing path; cross-read docs/agent-decision-boundary.md:22", "notes": "authority bound exists only in prose, not in the loop" }
+    }
+  ],
+  "observations": [
+    { "text": "The refund tool boundary is otherwise clean: it takes typed Ticket/Order and returns a typed RefundResult, so the fix is a validation+authority layer inside the tool, not a re-plumbing.", "lens": "parnas" },
+    { "text": "Model decisions are not replayable: the raw response, prompt version, and sampling parameters are not persisted per refund, so a bad refund cannot be root-caused after the fact. Recorded as debt, separate from RB-001.", "lens": "oracle-boundary", "follow_up": "Promote to a finding if an incident requires reconstructing a specific refund decision and the data is absent." }
+  ],
+  "hypotheses": [
+    { "text": "The single JSON-decode retry can loop forever and hang the ticket worker", "lens": "turing", "rejected_reason": "The fallback retries exactly once and then lets json.loads raise (agent/refund_tool.py:22-33); there is no loop. It is an unhandled-exception path, not an unbounded one — captured under RB-001's missing-test evidence, not as a separate liveness finding." },
+    { "text": "Passing idempotency_key=None risks double refunds on client retry", "lens": "lamport", "rejected_reason": "The tool is invoked once per ticket from a synchronous handler with no retry wrapper (tests/agent/test_refund_tool.py:11-19 and the single call site in agent/worker.py:88); at-least-once delivery is not in play on this path today. Recorded as an observation to revisit if the tool is ever moved behind a retrying queue; not a finding now." },
+    { "text": "The prompt change leaks internal reasoning to the customer", "rejected_reason": "The reply text is no longer returned to the customer on the executing path (decide_and_refund returns a RefundResult, not the model prose); refuted by reading the return type at agent/refund_tool.py:44-52." }
+  ],
+  "summary": {
+    "verdict": "fail",
+    "executive_summary": "PR #218 turns the support agent from a drafting assistant into an executor of refunds, and does it by passing the model's chosen amount straight into the payment provider with no deterministic validation between them (RB-001, S0 UNVALIDATED_ORACLE_OUTPUT). The oracle-boundary doc explicitly reserves refund execution for deterministic, human-owned code and requires a human approve step; the code violates both. RB-002 (S1) compounds it: the executing path has no per-ticket cap, no rate limit, and no approval gate, so one hallucinated or injected ticket is unbounded. Code style, prompt clarity, and error handling are fine and irrelevant to the verdict — money moves on unvalidated model output, which is exactly what the oracle-boundary and leveson lenses exist to catch. A clean module boundary (parnas 6) does not offset the S0.",
+    "strongest_lens": "parnas",
+    "weakest_lens": "oracle-boundary",
+    "weakest_reason": "the model became the decision-maker for money movement with no deterministic contract wrapping the crossing (RB-001) — the defining failure mode of this lens",
+    "required_actions": [
+      { "action": "Insert a deterministic validation+bounds layer between model output and StripeClient().refund: typed decision, reject-on-nonconforming, clamp to refundable balance, per-ticket/per-day cap, reason allowlist; add hostile/malformed model-output tests", "finding_ids": ["RB-001"], "owner": "agent team", "deadline": "2026-07-07", "blocking": true },
+      { "action": "Add enforced refund authority bounds and a human approve step above a low auto-approve threshold, plus an operator action log and kill switch; cover cap/already-refunded/approval paths with tests", "finding_ids": ["RB-002"], "owner": "agent team", "blocking": true }
+    ]
+  }
+}

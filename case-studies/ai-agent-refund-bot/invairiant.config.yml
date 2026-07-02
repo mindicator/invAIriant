@@ -1,0 +1,59 @@
+# invAIriant config — case study: AI support agent that decides refunds
+# Validates against ../../schemas/invairiant.config.schema.json
+# ILLUSTRATIVE / SYNTHESIZED. Fictional project "refund-agent": an LLM support
+# agent that reads a ticket and decides whether (and how much) to refund.
+
+project:
+  name: refund-agent
+  type: ai-agent-system
+  description: >
+    LLM support agent for a subscription product. It reads a customer ticket,
+    reasons about eligibility, and its output drives a refund against the
+    payment provider. Money moves on the agent's executing path.
+
+canonical_docs:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/agent-decision-boundary.md
+  - docs/adr/
+
+mandatory_lenses:
+  - oracle-boundary
+  - leveson
+  - parnas
+  - turing
+
+optional_lens_packs:
+  - security-safety
+  - ai-generated-code
+
+critical_lenses:
+  - oracle-boundary
+  - leveson
+
+risk_assets:
+  - customer funds
+  - refund authority
+  - fraud exposure
+  - financial reconciliation integrity
+
+evidence:
+  require_file_or_diff_reference: true
+  allow_observations_without_evidence: true
+  allow_findings_without_evidence: false
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: RB
+
+audit:
+  report_dir: docs/audits
+  cadence:
+    tactical: weekly
+    full_scale: every 6-8 weeks
+
+evidence_adapters:
+  - pytest
+  - semgrep
+  - github-actions

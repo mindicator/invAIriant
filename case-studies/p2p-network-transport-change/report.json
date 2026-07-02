@@ -1,0 +1,95 @@
+{
+  "title": "invAIriant Audit — overlaynet PR #351 (handshake + ordered apply)",
+  "date": "2026-07-02",
+  "audit_type": "pr",
+  "project": {
+    "name": "overlaynet",
+    "type": "p2p-network",
+    "commit_range": "main..f18c07d",
+    "branch": "feat/transport-handshake-v1"
+  },
+  "scope": "PR #351, which adds a session handshake with a fixed magic preamble to transport/handshake.go and changes transport/apply.go to apply incoming state updates in arrival order, re-applying on retransmit. Audited against docs/threat-model.md and docs/design/replication.md. Out of scope: the cryptographic key exchange (transport/noise.go), peer discovery, and the state CRDT internals.",
+  "inputs_reviewed": [
+    "diff main..f18c07d (PR #351, +58/-19)",
+    "transport/handshake.go @ f18c07d",
+    "transport/apply.go @ f18c07d",
+    "docs/threat-model.md @ f18c07d",
+    "docs/design/replication.md @ f18c07d",
+    "transport/apply_test.go @ f18c07d",
+    "go test ./transport @ f18c07d"
+  ],
+  "participants": [
+    "claude-agent (lens auditor: lamport, network-persistence, parnas, turing)",
+    "claude-agent-2 (evidence verifier)"
+  ],
+  "config_ref": "case-studies/p2p-network-transport-change/invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "systems", "lens": "lamport", "score": 3, "verdict": "Recv applies updates in arrival order with no Seq check, and onTimeout re-applies on retransmit with no dedup, so out-of-order or duplicated delivery corrupts state (PT-001)", "evidence_refs": ["PT-001"] },
+    { "pack": "domain", "lens": "network-persistence", "score": 3, "verdict": "the handshake opens with a constant 6-byte magic preamble and fixed-size fixed-order fields, giving the transport a stable fingerprint a DPI classifier can match on the first packet (PT-002)", "evidence_refs": ["PT-002"] },
+    { "pack": "core", "lens": "parnas", "score": 7, "verdict": "the transport/state boundary is clean; both defects live inside the transport module, not across its interfaces (obs O-1)" },
+    { "pack": "core", "lens": "turing", "score": 6, "verdict": "the resend path is bounded (single resend, no loop), so this is a correctness defect, not a liveness one (obs O-2)" }
+  ],
+  "findings": [
+    {
+      "id": "PT-001",
+      "severity": "S1",
+      "lens": "lamport",
+      "category": "ORDERING_ASSUMPTION",
+      "claim": "The receive path assumes messages arrive in the order they were produced and that a message is delivered at most once: Recv applies updates in arrival order without a sequence check, and onTimeout re-applies the update on retransmit with no deduplication, so reordering or a retransmit-plus-original double-applies state.",
+      "evidence": [
+        { "type": "file_lines", "file": "transport/apply.go", "lines": "44-49", "commit": "f18c07d", "description": "Recv now calls s.state.Apply(msg) directly with an in-line comment 'assumes in-order arrival'; the prior ApplyOrdered(msg) that buffered and reordered by msg.Seq was removed" },
+        { "type": "file_lines", "file": "transport/apply.go", "lines": "51-57", "commit": "f18c07d", "description": "onTimeout calls s.state.Apply(msg) and then resend(msg); if the original also lands, Apply runs twice for one logical update — no processed-Seq guard" },
+        { "type": "diff_hunk", "hunk": "-    // previously: buffered and reordered by msg.Seq before applying\n-    return s.state.ApplyOrdered(msg)\n+    s.state.Apply(msg)              // no Seq check; assumes in-order arrival\n+    return nil" },
+        { "type": "doc_code_contradiction", "doc": "docs/design/replication.md:37", "code": "transport/apply.go:44-57", "description": "replication.md states 'state updates are applied in Seq order and are idempotent under retransmit'; the code applies in arrival order and re-applies on retransmit" },
+        { "type": "missing_test", "description": "transport/apply_test.go covers only in-order, single-delivery sequences; no test delivers messages out of Seq order or delivers the same Seq twice (retransmit + original)" }
+      ],
+      "risk": "Two peers are already a distributed system: any reordering by the network or a timeout-triggered retransmit that races its original diverges the two peers' state and cannot be reconciled from the message stream. Under real packet loss — the normal case for this overlay — the state silently corrupts.",
+      "recommendation": "Restore ordering and idempotency: buffer and apply by msg.Seq (reject or hold out-of-order arrivals), and guard Apply with a processed-Seq set so a retransmit-plus-original is a no-op on the second delivery. Update replication.md only if the guarantee changes. Add out-of-order and duplicate-delivery tests.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["transport", "state"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read transport/apply.go:44-57; confirmed removal of ApplyOrdered and absence of any Seq/dedup guard; cross-read replication.md:37; grepped transport/apply_test.go for out-of-order/duplicate cases (none)", "notes": "both the ordering assumption and the retransmit double-apply are present; one finding, two mechanisms" }
+    },
+    {
+      "id": "PT-002",
+      "severity": "S1",
+      "lens": "network-persistence",
+      "category": "DISTINGUISHABLE_TRANSPORT",
+      "claim": "The new session handshake begins with a constant 6-byte magic preamble followed by fixed-size, fixed-order fields, giving the transport a stable per-session fingerprint a passive DPI classifier can match on the first packet — the transport is obfuscated-looking but not indistinguishable.",
+      "evidence": [
+        { "type": "file_lines", "file": "transport/handshake.go", "lines": "23-31", "commit": "f18c07d", "description": "sessionMagic = []byte{0x4F,0x56,0x52,0x4C,0x59,0x01} ('OVRLY\\x01') is written as the first bytes of every session, before the TLS-looking wrapper, then a fixed-size handshakeHeader{Ver, Peer} with static padding" },
+        { "type": "diff_hunk", "hunk": "+var sessionMagic = []byte{0x4F, 0x56, 0x52, 0x4C, 0x59, 0x01} // \"OVRLY\\x01\"\n+func writeHandshake(c net.Conn, id PeerID) error {\n+    if _, err := c.Write(sessionMagic); err != nil { // constant 6-byte preamble\n+        return err\n+    }" },
+        { "type": "doc_code_contradiction", "doc": "docs/threat-model.md:28", "code": "transport/handshake.go:23-31", "description": "threat-model.md claims 'session establishment is statistically indistinguishable from a standard TLS handshake and survives active probing'; a fixed magic constant in the clear is a trivially matchable signature" },
+        { "type": "missing_test", "description": "No fingerprint/indistinguishability test exists: nothing under transport/ compares the handshake byte distribution against a real TLS ClientHello or asserts the absence of a static preamble" }
+      ],
+      "risk": "A blocker running pattern matching blocks the entire overlay on the constant 'OVRLY\\x01' preamble with one rule and near-zero false positives — reachability, the property the system exists for, collapses to a single string match. The threat-model's indistinguishability claim is false.",
+      "recommendation": "Remove the cleartext magic constant; derive session framing from the negotiated key so the first bytes are pseudorandom, and match legitimate TLS record framing rather than prefixing a marker. Add a fingerprint test comparing the handshake against a reference TLS ClientHello and asserting no static preamble; correct threat-model.md to the guarantee actually met.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "hybrid",
+      "affected_components": ["transport"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read transport/handshake.go:23-31; confirmed the constant preamble is written before any encryption; cross-read threat-model.md:28; searched transport/ for any statistical fingerprint test (none)", "notes": "'obfuscated' but not indistinguishable — a marker in the clear is a signature" }
+    }
+  ],
+  "observations": [
+    { "text": "The transport/state boundary is clean: both defects live inside the transport module and are fixable without touching the state CRDT interface.", "lens": "parnas" },
+    { "text": "The resend path is bounded (a single resend, no retry loop), so PT-001 is a state-corruption defect rather than a liveness one; the turing lens finds no unbounded loop here.", "lens": "turing", "follow_up": "Revisit if resend is ever changed to loop until acknowledged." }
+  ],
+  "hypotheses": [
+    { "text": "The removed ApplyOrdered means messages can now be lost entirely, not just reordered", "lens": "lamport", "rejected_reason": "The transport still acks and the sender still retransmits on timeout (transport/apply.go:51-57 and transport/session.go:120-138), so loss is recovered; the defect is that recovery re-applies without a Seq guard (PT-001), not that messages vanish. Refuted by reading the resend path — captured inside PT-001, not as a separate loss finding." },
+    { "text": "The magic constant leaks the peer's identity to a passive observer", "lens": "network-persistence", "rejected_reason": "sessionMagic is a fixed protocol marker identical for every peer (transport/handshake.go:23); it identifies the protocol, not the peer. The peer id is sent inside handshakeHeader after the marker but before encryption — a real concern, but a distinct one already implied by PT-002's 'first bytes should be pseudorandom' fix. Not filed as a separate unlinkability finding to avoid double-charging the same cleartext-handshake defect." },
+    { "text": "BigEndian binary.Write of the header is a portability bug across peer architectures", "lens": "parnas", "rejected_reason": "binary.BigEndian is explicit and fixed on both write and read paths (transport/handshake.go:30 and transport/read.go:41), so byte order is consistent across architectures. No evidence of a mismatch; not a finding." }
+  ],
+  "summary": {
+    "verdict": "fail",
+    "executive_summary": "PR #351 makes two changes that each defeat a core property of the overlay. First, transport/apply.go now applies state updates in arrival order and re-applies them on retransmit with no Seq check or dedup, so ordinary packet reordering or a timeout race corrupts distributed state that cannot be rebuilt from the stream (PT-001, S1 ORDERING_ASSUMPTION) — and replication.md explicitly promises Seq-ordered, idempotent apply. Second, the new handshake opens with a constant 'OVRLY\\x01' magic preamble in the clear, a stable fingerprint a blocker blocks with one rule, while threat-model.md claims the handshake is indistinguishable from TLS (PT-002, S1 DISTINGUISHABLE_TRANSPORT). A generic review passes the happy path — messages arrive in order in the test, the handshake completes — and sees neither defect. The transport boundary is clean (parnas 7), but two S1s block the merge.",
+    "strongest_lens": "parnas",
+    "weakest_lens": "lamport",
+    "weakest_reason": "the receive path assumes a single well-ordered, at-most-once world (arrival-order apply, retransmit re-apply) with nothing enforcing it — the defining failure mode of this lens (PT-001)",
+    "required_actions": [
+      { "action": "Apply state updates by msg.Seq (buffer/reject out-of-order) and guard Apply with a processed-Seq set so retransmit-plus-original is idempotent; add out-of-order and duplicate-delivery tests", "finding_ids": ["PT-001"], "owner": "transport team", "deadline": "2026-07-08", "blocking": true },
+      { "action": "Remove the cleartext magic preamble; derive pseudorandom session framing from the negotiated key and match TLS record framing; add a fingerprint test vs a reference ClientHello; correct threat-model.md", "finding_ids": ["PT-002"], "owner": "transport team", "deadline": "2026-07-08", "blocking": true }
+    ]
+  }
+}

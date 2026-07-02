@@ -1,0 +1,60 @@
+# invAIriant config — case study: large AI-generated Express/TS route handlers
+# Validates against ../../schemas/invairiant.config.schema.json
+# ILLUSTRATIVE / SYNTHESIZED. Fictional project "orders-api": an Express +
+# TypeScript service whose CRUD handlers were largely AI-generated in bulk.
+
+project:
+  name: orders-api
+  type: product-saas
+  description: >
+    Express + TypeScript service exposing tenant-facing CRUD over orders,
+    invoices, and shipments. A large fraction of the route handlers were
+    AI-generated as near-duplicate templates and merged in one PR.
+
+canonical_docs:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/security/authz.md
+  - CONTRIBUTING.md
+
+mandatory_lenses:
+  - generated-surface-area
+  - review-bottleneck
+  - parnas
+  - mcconnell
+
+optional_lens_packs:
+  - ai-generated-code
+  - security-safety
+
+critical_lenses:
+  - generated-surface-area
+  - review-bottleneck
+
+risk_assets:
+  - tenant data isolation
+  - authorization correctness
+  - reviewer capacity
+  - maintainability of generated code
+
+evidence:
+  require_file_or_diff_reference: true
+  allow_observations_without_evidence: true
+  allow_findings_without_evidence: false
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: GT
+
+audit:
+  report_dir: docs/audits
+  cadence:
+    tactical: weekly
+    full_scale: every 6-8 weeks
+
+evidence_adapters:
+  - jest
+  - eslint
+  - github-actions
+  - semgrep

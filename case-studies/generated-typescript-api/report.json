@@ -1,0 +1,94 @@
+{
+  "title": "invAIriant Audit — orders-api PR #874 (bulk-generated CRUD handlers)",
+  "date": "2026-07-02",
+  "audit_type": "pr",
+  "project": {
+    "name": "orders-api",
+    "type": "product-saas",
+    "commit_range": "main..9b34ac1",
+    "branch": "feat/generate-crud-handlers"
+  },
+  "scope": "PR #874, a single 1,612-line change adding AI-generated Express/TypeScript route handlers for orders, invoices, and shipments, plus their repos and tests. Audited against docs/security/authz.md and CONTRIBUTING.md. Out of scope: the auth middleware implementation itself (mw/auth.ts), the ORM, and unrelated migrations bundled in the branch.",
+  "inputs_reviewed": [
+    "diff main..9b34ac1 (PR #874, +1612/-40, 22 files)",
+    "src/routes/{orders,invoices,shipments}.ts @ 9b34ac1",
+    "src/mw/authz.ts @ 9b34ac1",
+    "docs/security/authz.md @ 9b34ac1",
+    "test/routes/*.test.ts @ 9b34ac1",
+    "jest --coverage @ 9b34ac1 (CI build 3391)",
+    "PR #874 review timeline (github-actions)"
+  ],
+  "participants": [
+    "claude-agent (lens auditor: generated-surface-area, review-bottleneck, parnas, mcconnell)",
+    "claude-agent-2 (evidence verifier)"
+  ],
+  "config_ref": "case-studies/generated-typescript-api/invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "ai-generated-code", "lens": "generated-surface-area", "score": 3, "verdict": "near-duplicate handlers generated from one template diverged on the security-relevant line: invoices.ts dropped the requireTenantScope authz middleware present in orders.ts and shipments.ts (GT-001)", "evidence_refs": ["GT-001"] },
+    { "pack": "ai-generated-code", "lens": "review-bottleneck", "score": 4, "verdict": "1,612-line generated PR approved in a single pass ~9 minutes after push; changed-line test coverage 41% vs the documented 80% floor, and no test exercises the missing-authz case (GT-002)", "evidence_refs": ["GT-002"] },
+    { "pack": "core", "lens": "parnas", "score": 7, "verdict": "handler/repo/middleware layering is sound; the defect is a dropped call within an otherwise consistent boundary, not a coupling break (obs O-1)" },
+    { "pack": "core", "lens": "mcconnell", "score": 6, "verdict": "changes localized and readable, but the near-duplication invites the next generation to add a fourth copy; consolidation not scheduled (obs O-2)" }
+  ],
+  "findings": [
+    {
+      "id": "GT-001",
+      "severity": "S1",
+      "lens": "generated-surface-area",
+      "category": "DIVERGENT_DUPLICATE",
+      "claim": "Three route handlers were generated from one template but one diverged on the security-relevant line: the invoices GET handler omits the requireTenantScope authorization middleware that the orders and shipments handlers apply, so any authenticated user can read any tenant's invoice by id.",
+      "evidence": [
+        { "type": "file_lines", "file": "src/routes/invoices.ts", "lines": "8-14", "commit": "9b34ac1", "description": "invoices.get(\"/:id\", requireAuth, async (req, res) => {...}) — the middleware chain has requireAuth but no requireTenantScope(\"invoices:read\"); a code comment even notes the omission" },
+        { "type": "file_lines", "file": "src/routes/orders.ts", "lines": "8-13", "commit": "9b34ac1", "description": "The sibling handler generated from the same template: orders.get(\"/:id\", requireAuth, requireTenantScope(\"orders:read\"), ...) — authz middleware present, establishing the intended pattern" },
+        { "type": "doc_code_contradiction", "doc": "docs/security/authz.md:19", "code": "src/routes/invoices.ts:8-14", "description": "authz.md states 'every tenant-scoped read must pass requireTenantScope before touching a repo'; the invoices handler reaches InvoicesRepo.byId without it" },
+        { "type": "missing_test", "description": "No test in test/routes/invoices.test.ts asserts that a user from tenant A is denied tenant B's invoice; the generated tests assert only 200/404 for the caller's own tenant, so the divergence is invisible to the suite" }
+      ],
+      "risk": "Cross-tenant data exposure: any authenticated tenant can enumerate and read other tenants' invoices, including totals and billing metadata. The near-duplication hides it — three files look interchangeable, and the one that dropped the check reads identically at a glance.",
+      "recommendation": "Restore requireTenantScope(\"invoices:read\") on the invoices GET handler. Then remove the class of defect: extract the shared middleware chain into one generated factory so the authz step cannot be dropped per-file, add an arch-conformance test asserting every tenant-scoped route includes requireTenantScope, and add a cross-tenant-denied test for each resource.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "hybrid",
+      "affected_components": ["routes", "authz"],
+      "verification": { "verified_by": "claude-agent-2", "method": "diffed src/routes/invoices.ts against orders.ts and shipments.ts line by line; confirmed only invoices.ts lacks requireTenantScope; cross-read authz.md:19; grepped test/routes for a cross-tenant assertion (0 hits)", "notes": "one-line divergence in an otherwise identical template; exactly the near-duplicate-with-small-inconsistency pattern the lens targets" }
+    },
+    {
+      "id": "GT-002",
+      "severity": "S2",
+      "lens": "review-bottleneck",
+      "category": "RUBBER_STAMP_MERGE",
+      "claim": "A 1,612-line generated PR was approved in a single pass minutes after push, with changed-line test coverage well below the documented floor and no test covering the authz divergence, so neither human review nor the gates would catch GT-001.",
+      "evidence": [
+        { "type": "ci_output", "reference": "PR #874 review timeline: pushed 14:02, single approval at 14:11 with no line comments on a 22-file / 1,612-line diff" },
+        { "type": "ci_output", "reference": "jest --coverage, CI build 3391: changed-line coverage 41% across src/routes/**; the generated tests mirror the handlers rather than asserting cross-tenant behavior" },
+        { "type": "doc_code_contradiction", "doc": "CONTRIBUTING.md:52", "code": ".github/workflows/ci.yml:39-47", "description": "CONTRIBUTING states 'an 80% changed-line coverage floor applies to all merges'; the CI workflow sets coverage-threshold to 0 for src/routes/**, so the floor is not enforced where the generated code landed" },
+        { "type": "missing_test", "description": "No test exercises the missing-authz path (see GT-001); the deterministic gate that could have caught the divergence — a cross-tenant authz test or an arch-conformance check — does not exist" }
+      ],
+      "risk": "The highest-volume, least-examined code is also the least-gated: a large generated diff clears review as a formality and clears CI because the coverage floor is disabled on exactly the directory it touched, so a security divergence like GT-001 reaches production unblocked.",
+      "recommendation": "Restore the 80% changed-line floor for src/routes/** (fix the tests, not the threshold); add an arch-conformance test asserting tenant-scoped routes carry requireTenantScope so a human need not eyeball 22 near-identical files; split future bulk generations into per-resource stacked PRs; record a rubber-stamp metric (approval under N minutes over M changed lines).",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["ci", "routes"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read the PR #874 timeline and CI build 3391 coverage report; cross-read CONTRIBUTING.md:52 against .github/workflows/ci.yml:39-47 and confirmed the src/routes/** exemption", "notes": "the gate that would have caught GT-001 is disabled precisely where GT-001 lives" }
+    }
+  ],
+  "observations": [
+    { "text": "Handler/repo/middleware layering is otherwise sound: the fix for GT-001 is a shared middleware factory plus a conformance test, not a re-architecture.", "lens": "parnas" },
+    { "text": "The three resource modules are near-duplicates with no shared abstraction; the next generated resource will likely add a fourth copy. Consolidation is not scheduled.", "lens": "mcconnell", "follow_up": "Promote to a finding if a second divergence appears in the duplicated set, or if the copy count grows without a consolidation ticket." }
+  ],
+  "hypotheses": [
+    { "text": "The generated repos duplicate SQL and one omits the tenant_id filter, widening the cross-tenant exposure below the handler", "lens": "generated-surface-area", "rejected_reason": "All three repos take tenantId and filter on it: InvoicesRepo.byId(id, tenantId) applies WHERE tenant_id = $2 (src/repos/invoices.ts:22-31), matching orders and shipments. The exposure is solely the missing handler-level scope check (GT-001); the repo layer is consistent. Refuted by reading all three repo files." },
+    { "text": "requireAuth itself is a no-op stub in the generated middleware, so every route is unauthenticated", "lens": "review-bottleneck", "rejected_reason": "mw/auth.ts:14-40 verifies the session token and populates req.tenantId; a passing test test/mw/auth.test.ts:9-27 exercises reject-on-missing-token. requireAuth works; the defect is the missing authorization step, not authentication. Out of audited scope but checked to bound the blast radius." },
+    { "text": "The 1,612-line diff includes speculative dead endpoints shipped 'because they came with the generation'", "lens": "generated-surface-area", "rejected_reason": "Coverage report CI build 3391 shows every generated route has at least one caller in the test suite and the OpenAPI spec references each; no zero-caller export found. Diff mass is high but not dead. Demoted from a candidate dead-surface finding to nothing — no evidence." }
+  ],
+  "summary": {
+    "verdict": "fail",
+    "executive_summary": "PR #874 adds 1,612 lines of near-identical generated CRUD handlers. They read as interchangeable — which is the problem: one of them, invoices.ts, dropped the requireTenantScope authorization middleware that its siblings apply, opening cross-tenant reads of invoice data (GT-001, S1 DIVERGENT_DUPLICATE). It reached main because a 1,612-line generated diff was approved in a single pass minutes after push, and the coverage floor that might have forced a test is disabled on exactly src/routes/** (GT-002, S2 RUBBER_STAMP_MERGE). A generic review of this PR would call it consistent and well-typed; consistency is precisely the camouflage. The layering is otherwise sound (parnas 7), but the S1 blocks the merge.",
+    "strongest_lens": "parnas",
+    "weakest_lens": "generated-surface-area",
+    "weakest_reason": "near-duplicate handlers with a small, security-relevant inconsistency — the dropped authz check — is the exact defect shape this lens exists to surface (GT-001)",
+    "required_actions": [
+      { "action": "Restore requireTenantScope(\"invoices:read\") on the invoices GET handler; extract the shared middleware chain into one factory; add an arch-conformance test asserting every tenant-scoped route carries requireTenantScope; add cross-tenant-denied tests per resource", "finding_ids": ["GT-001"], "owner": "api team", "deadline": "2026-07-05", "blocking": true },
+      { "action": "Restore the 80% changed-line coverage floor for src/routes/**; split future bulk generations into stacked per-resource PRs; report a rubber-stamp metric", "finding_ids": ["GT-002"], "owner": "platform", "blocking": false }
+    ]
+  }
+}

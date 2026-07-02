@@ -35,6 +35,12 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
   signals for model-calls/shell/SQL/secrets/TODO, import hints, generated
   mass, known-rejected) handed to the skill as input. Every item is a
   candidate pointer, never a finding. `collect-evidence` is kept as an alias.
+- **Case studies** (`case-studies/`): one **real** (`persistent-mesh-transport`, built
+  from an actual diff + finding) and three illustrative
+  (`ai-agent-refund-bot`, `generated-typescript-api`,
+  `p2p-network-transport-change`). Each carries the diff, selected lenses,
+  candidate/rejected/verified findings, a schema-valid report, and a
+  side-by-side of **what a normal AI reviewer missed**.
 
 ### Fixed
 

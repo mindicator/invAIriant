@@ -1,0 +1,59 @@
+# invAIriant config — case study: P2P overlay handshake/transport change
+# Validates against ../../schemas/invairiant.config.schema.json
+# ILLUSTRATIVE / SYNTHESIZED. Fictional project "overlaynet": a peer-to-peer
+# overlay whose handshake and message transport are being changed.
+
+project:
+  name: overlaynet
+  type: p2p-network
+  description: >
+    Peer-to-peer overlay network. Peers establish sessions over a custom
+    transport and exchange state-update messages. Reachability under a blocking
+    adversary and correct distributed state are both core properties.
+
+canonical_docs:
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/threat-model.md
+  - docs/design/replication.md
+
+mandatory_lenses:
+  - lamport
+  - network-persistence
+  - parnas
+  - turing
+
+optional_lens_packs:
+  - systems
+  - domain
+
+critical_lenses:
+  - network-persistence
+  - lamport
+
+risk_assets:
+  - reachability under blocking
+  - distributed state integrity
+  - peer unlinkability
+  - transport indistinguishability
+
+evidence:
+  require_file_or_diff_reference: true
+  allow_observations_without_evidence: true
+  allow_findings_without_evidence: false
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: PT
+
+audit:
+  report_dir: docs/audits
+  cadence:
+    tactical: weekly
+    full_scale: every 6-8 weeks
+
+evidence_adapters:
+  - go-test
+  - golangci-lint
+  - github-actions
