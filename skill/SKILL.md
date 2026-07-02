@@ -3,7 +3,8 @@ name: invairiant
 description: >
   invAIriant — an evidence-based, multi-lens architecture-audit protocol for
   LLM coding agents. This skill IS the product: it runs the audit. Commands:
-  audit-pr, full-audit, verify-findings, classify-severity, synthesize-report.
+  audit-pr, full-audit, verify-findings, classify-severity, synthesize-report,
+  closure-verification.
   Use when the user asks for an architecture / invariant / lens audit, an
   evidence-based review, a PR audit, a phase-transition or post-incident audit,
   to verify candidate findings, classify severity, or synthesize an audit
@@ -35,11 +36,15 @@ Parse the first token of the invocation as the command. Default (no token) →
 
 | Command | Does | Pipeline stages |
 |---|---|---|
-| `audit-pr [<pr#\|range>]` | Audit a PR/diff: checklist + ≤2 focused lenses | 1→2→3→4, PR-comment output |
-| `full-audit [<range>]` | Full-scale audit: all mandatory lenses | 1→2→3→4, full report |
+| `audit-pr [<pr#\|range>] [--lenses a,b]` | Audit a PR/diff: checklist + ≤2 focused lenses | 1→2→3→4, PR-comment output |
+| `full-audit [<range>] [--lenses ...]` | Full-scale audit: all mandatory lenses | 1→2→3→4, full report |
 | `verify-findings <candidates>` | Adversarially verify candidate findings only | stage 2 |
 | `classify-severity <verified>` | Map verified findings to severity only | stage 3 |
 | `synthesize-report <inputs>` | Assemble the final report only | stage 4 |
+| `closure-verification` | Re-verify that claimed fixes closed, no re-search | verify-only |
+
+`--lenses a,b` overrides lens selection (comma-separated lens ids from
+`docs/lens-taxonomy.md`); omit it to let the skill pick by risk surface.
 
 The four stages and their prompts:
 
@@ -53,6 +58,23 @@ The four stages and their prompts:
 Stage boundaries are load-bearing: stage 1 never assigns final severity;
 stage 2 never invents findings; stage 3 touches only verified findings;
 stage 4 never drops a rejected hypothesis.
+
+## Try it (copy-paste)
+
+```text
+/invairiant audit-pr                              # audit the current diff/PR
+/invairiant audit-pr --lenses security-threat,turing
+/invairiant audit-pr HEAD~1..HEAD                 # a specific range
+/invairiant full-audit                            # whole repo, mandatory lenses
+/invairiant verify-findings <candidate findings>  # stage 2 only
+/invairiant closure-verification                  # after a fix wave
+```
+
+**What `audit-pr` gives you:** a ready-to-paste PR comment
+(`templates/pr-comment.md`) — verdict (`pass` / `pass_with_conditions` /
+`fail`), the audited range, the checklist, verified findings each with cited
+evidence, conditions, and observations/hypotheses kept separate. Nothing is
+merged or approved — you own the gate.
 
 ## Step 0 — locate the framework
 
@@ -71,19 +93,30 @@ found, run **degraded mode** (below) rather than inventing lens content.
 3. **Lens selection.** Mandatory lenses from config, plus at most the packs the
    change/risk surface justifies. Anti-overengineering is canon: a small PR
    gets the checklist + ≤2 lenses; default full audits use 4–6, not 20.
-4. **Evidence gathering.** Run `invairiant collect-evidence` (and any project
-   test/lint/scan). Treat every tool's output as **candidate evidence, never a
-   finding** — it still passes stage 2.
+4. **Evidence gathering.** Run `invairiant collect --range <range> --out
+   .invairiant/cache/bundle.json` to build the deterministic evidence bundle
+   (diff, tree, language stats, grep signals, import hints, generated mass,
+   known-rejected). Hand it to the lens passes as input. Everything in it is a
+   **candidate pointer, never a finding** — it still passes stage 2. The raw
+   bundle stays gitignored.
 
 ## Command procedures
 
-### `audit-pr`
-Scope = the diff + its blast radius. Run the PR checklist
-(`templates/pr-comment.md`) and ≤2 lenses chosen by the diff's risk surface
-(new agent loop → `turing`/`oracle-boundary`; new endpoint →
-`security-threat`). Run stages 1→4. Output the PR-comment verdict
-(`pass` / `pass_with_conditions` / `fail`) with verified findings, unsupported
-hypotheses kept separate. Do not merge/approve anything — present the gate.
+### `audit-pr [<pr#|range>] [--lenses a,b]`
+Scope = the diff + its blast radius. Runbook:
+1. **Shared setup** (config, scope, lens selection). Lenses: `--lenses` if
+   given, else ≤2 chosen by the diff's risk surface (new agent loop →
+   `turing`/`oracle-boundary`; new endpoint → `security-threat`; migration →
+   `kleppmann`/`mcconnell`; big generated diff → `generated-surface-area`).
+2. **Collect** the bundle: `invairiant collect --range <range> --out
+   .invairiant/cache/bundle.json` → feed it to the lens passes as input.
+3. **Pipeline** stages 1 (lens passes) → 2 (verify) → 3 (classify) →
+   4 (synthesize), against the PR checklist in `templates/pr-comment.md`.
+4. **Deliverable:** a PR comment following `templates/pr-comment.md` — verdict
+   (`pass` / `pass_with_conditions` / `fail`), verified findings with cited
+   evidence, conditions, observations/hypotheses kept separate.
+
+Do not merge/approve anything — present the gate.
 
 ### `full-audit`
 Scope = whole system at a pinned commit. Assign roles
@@ -116,15 +149,24 @@ Input: scored findings + observations/hypotheses + metadata. Apply
 from open findings (any S0 → fail; any S1 → at best pass_with_conditions),
 never from score averages. Optionally render with `invairiant render-report`.
 
+### `closure-verification`
+After a wave of fixes or incident fix-forwards, verify closure **without a
+full re-audit** (`docs/audit-workflow.md` §5). For each finding claimed closed:
+confirm the fix landed with conformance evidence; check no new boundary drift
+or hidden channels appeared; CI green at the verified HEAD; canonical docs
+synced; temporary workarounds removed. Output a short closure report — each
+claim → verified / not-verified, plus remaining open findings with owners. It
+re-verifies claims; it does **not** search for new findings.
+
 ## The CLI is a seatbelt, not an auditor
 
 Use the `invairiant` CLI for deterministic infrastructure only — never for
 judgment (`docs/cli.md`):
 
 - `invairiant init` — scaffold a config;
+- `invairiant collect` — gather the deterministic evidence bundle (candidate
+  pointers only);
 - `invairiant validate-config` / `validate-report` — schema-check inputs/outputs;
-- `invairiant collect-evidence` — run declared adapters, normalize their raw
-  output into candidate evidence;
 - `invairiant render-report` — deterministic JSON→Markdown;
 - `invairiant ci-gate` — exit non-zero on open S0/S1.
 

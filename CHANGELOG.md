@@ -15,8 +15,10 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
 ### Added
 
 - **Skill commands** (`skill/SKILL.md`): `audit-pr`, `full-audit`,
-  `verify-findings`, `classify-severity`, `synthesize-report` — end-to-end
-  audits plus individual pipeline stages.
+  `verify-findings`, `classify-severity`, `synthesize-report`, and
+  `closure-verification` — end-to-end audits plus individual pipeline stages.
+  Added a `--lenses a,b` override, a copy-paste "Try it" block, and a concrete
+  `audit-pr` runbook (collect → lens passes → verify → classify → PR comment).
 - **CLI** (`cli/invairiant.py`, spec in `docs/cli.md`): `init`,
   `validate-config`, `validate-report`, `collect-evidence`, `render-report`,
   `ci-gate` — deterministic infrastructure only (no lenses, findings, or

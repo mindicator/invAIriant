@@ -52,11 +52,13 @@ commands:
 mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
 
 #   in the agent:
-#   /invairiant audit-pr            # PR-scoped: checklist + <=2 focused lenses
-#   /invairiant full-audit          # full-scale: all mandatory lenses -> report
-#   /invairiant verify-findings ... # stage 2 only: adversarially verify candidates
-#   /invairiant classify-severity . # stage 3 only
-#   /invairiant synthesize-report . # stage 4 only
+#   /invairiant audit-pr                      # PR-scoped: checklist + <=2 lenses
+#   /invairiant audit-pr --lenses turing,security-threat
+#   /invairiant full-audit                    # whole repo, mandatory lenses
+#   /invairiant verify-findings ...           # stage 2 only
+#   /invairiant classify-severity ...         # stage 3 only
+#   /invairiant synthesize-report ...         # stage 4 only
+#   /invairiant closure-verification          # after a fix wave
 ```
 
 **The CLI is the seatbelt around it** (it never audits — no lenses, no

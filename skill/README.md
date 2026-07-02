@@ -10,12 +10,14 @@ stands on; the [CLI](../cli/README.md) is only infrastructure around it.
 
 | Command | Does |
 |---|---|
-| `audit-pr [<pr#\|range>]` | PR-scoped audit: checklist + ≤2 focused lenses → verdict |
+| `audit-pr [<pr#\|range>] [--lenses a,b]` | PR-scoped audit: checklist + ≤2 focused lenses → verdict |
 | `full-audit [<range>]` | full-scale audit: all mandatory lenses → report |
 | `verify-findings <candidates>` | adversarially verify candidate findings (stage 2) |
 | `classify-severity <verified>` | map verified findings to severity (stage 3) |
 | `synthesize-report <inputs>` | assemble the final report (stage 4) |
+| `closure-verification` | re-verify claimed fixes closed (no re-search) |
 
+`--lenses a,b` overrides lens selection; omit it to pick by risk surface.
 All under one rule: **no evidence, no finding.**
 
 ## Install
