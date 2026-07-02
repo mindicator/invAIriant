@@ -40,3 +40,6 @@ tmp/
 
 # Stray spreadsheets dropped into the working dir (not part of the framework)
 *.xlsx
+
+# Python build/install artifacts
+*.egg-info/

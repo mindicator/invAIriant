@@ -26,16 +26,24 @@ is real, scoring a lens, choosing severity — it belongs in the skill, not here
 
 ## Install / run
 
-Reference implementation: [`cli/invairiant.py`](../cli/invairiant.py) (Python
-3.9+; `pip install jsonschema pyyaml` for the validate/collect commands).
+Install from a checkout to get the `invairiant` command (Python 3.9+;
+`jsonschema` + `pyyaml` come with it):
+
+```bash
+pip install -e .        # or: pipx install -e .
+invairiant <command> [...]
+```
+
+No install needed either — run the single module directly:
 
 ```bash
 python3 cli/invairiant.py <command> [...]
-# convenience alias:
-alias invairiant='python3 /path/to/invairiant/cli/invairiant.py'
 ```
 
-It locates the framework via `$INVAIRIANT_HOME`, else relative to the script.
+It locates the framework tree via `$INVAIRIANT_HOME`, then the repo layout,
+then by searching upward from the script and the current directory — so the
+installed command works from inside a checkout. For a non-editable install
+outside a checkout, set `INVAIRIANT_HOME`.
 
 ## Commands
 
@@ -95,7 +103,8 @@ positioning.
 
 ## Status
 
-Reference implementation. `init`, `validate-config`, `validate-report`, and
-`ci-gate` are complete; `collect-evidence` and `render-report` are functional
-and intentionally minimal. Packaging as an installable `invairiant` entry point
-is a thin future wrapper; the schemas are the stable contract underneath.
+Reference implementation, installable as the `invairiant` command
+([`pyproject.toml`](../pyproject.toml)). `init`, `validate-config`,
+`validate-report`, and `ci-gate` are complete; `collect-evidence` and
+`render-report` are functional and intentionally minimal. The schemas are the
+stable contract underneath.

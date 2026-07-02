@@ -63,9 +63,10 @@ mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
 findings, no scores):
 
 ```bash
-python3 cli/invairiant.py init --type infra-service   # scaffold the config
-python3 cli/invairiant.py validate-config             # schema-check it
-python3 cli/invairiant.py ci-gate docs/audits/x.json  # fail CI on open S0/S1
+pip install -e .                          # gives the `invairiant` command
+invairiant init --type infra-service      # scaffold the config
+invairiant validate-config                # schema-check it
+invairiant ci-gate docs/audits/x.json     # fail CI on open S0/S1
 ```
 
 **No tooling at all?** The protocol runs by hand: copy a config from

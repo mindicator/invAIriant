@@ -23,6 +23,9 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
   scores). `ci-gate` exits non-zero on open S0/S1.
 - **Machine-readable example report** (`examples/infra-service/example-report.json`)
   validating against the audit-report schema; CI now smoke-tests the CLI.
+- **Packaging** (`pyproject.toml`): the CLI installs as the `invairiant`
+  console command (`pip install -e .`), with robust framework-root discovery
+  ($INVAIRIANT_HOME → repo layout → upward search).
 
 ## [0.1.0] — 2026-07-02
 

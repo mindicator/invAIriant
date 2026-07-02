@@ -1,0 +1,39 @@
+# Packaging for the invAIriant helper CLI only.
+#
+# invAIriant's product is the /invairiant agent skill; this package installs the
+# narrow `invairiant` command (init / validate-config / validate-report /
+# collect-evidence / render-report / ci-gate). It serves the audit; it does not
+# audit. See docs/cli.md.
+#
+# Recommended install (from a checkout, so the CLI finds the framework tree):
+#     pip install -e .        # or: pipx install -e .
+# For a non-editable install, set INVAIRIANT_HOME to the framework directory,
+# or run `invairiant` from inside a checkout (root is auto-discovered).
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "invairiant"
+version = "0.1.0"
+description = "Helper CLI for the invAIriant agentic audit protocol — it serves the audit, it does not audit."
+readme = "cli/README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "mindicator & silicon bags quartet" }]
+keywords = ["audit", "architecture", "evidence", "llm", "code-review"]
+dependencies = ["jsonschema>=4.18", "pyyaml>=6"]
+
+[project.urls]
+Homepage = "https://github.com/mindicator/invairiant"
+Documentation = "https://github.com/mindicator/invairiant/blob/main/docs/cli.md"
+
+[project.scripts]
+invairiant = "invairiant:main"
+
+# The CLI is a single module under cli/; expose it as the top-level module
+# `invairiant` without pulling the docs/lenses/etc. into the distribution.
+[tool.setuptools]
+package-dir = { "" = "cli" }
+py-modules = ["invairiant"]

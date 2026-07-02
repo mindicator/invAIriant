@@ -30,11 +30,27 @@ import sys
 from pathlib import Path
 
 
+def _looks_like_root(p: Path) -> bool:
+    return (p / "schemas").is_dir() and (p / "lenses").is_dir()
+
+
 def framework_root() -> Path:
+    """Resolve the framework tree. Order: $INVAIRIANT_HOME, the repo layout
+    (cli/invairiant.py -> repo root), then a search upward from the script and
+    the cwd. This lets the installed `invairiant` command work from inside a
+    checkout regardless of how it was installed."""
     env = os.environ.get("INVAIRIANT_HOME")
     if env:
         return Path(env).expanduser().resolve()
-    return Path(__file__).resolve().parent.parent
+    here = Path(__file__).resolve()
+    cand = here.parent.parent
+    if _looks_like_root(cand):
+        return cand
+    for start in (here.parent, Path.cwd().resolve()):
+        for d in (start, *start.parents):
+            if _looks_like_root(d):
+                return d
+    return cand  # best effort; schema loads will emit a clear error
 
 
 ROOT = framework_root()
