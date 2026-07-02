@@ -53,6 +53,13 @@ def framework_root() -> Path:
     return cand  # best effort; schema loads will emit a clear error
 
 
+def known_lens_ids() -> set:
+    """The set of valid lens ids = basenames of lenses/*/*.md (minus README).
+    Cross-listed stubs reuse a canonical id, so the set stays deduplicated."""
+    lenses = framework_root() / "lenses"
+    return {p.stem for p in lenses.glob("*/*.md") if p.stem != "README"}
+
+
 ROOT = framework_root()
 SCHEMAS = ROOT / "schemas"
 EXAMPLES = ROOT / "examples"
@@ -101,6 +108,21 @@ def _errors(validator, instance, label: str) -> int:
         loc = "/".join(str(p) for p in err.path) or "<root>"
         print(f"  ✗ {label}: {loc}: {err.message}")
         n += 1
+    return n
+
+
+def _check_lens_refs(data: dict, label: str) -> int:
+    """Referential integrity: config lens ids must exist in the lens library.
+    Catches a typo'd mandatory_lens at validate time instead of mid-audit."""
+    known = known_lens_ids()
+    if not known:
+        return 0  # library not resolvable here — skip rather than false-fail
+    n = 0
+    for key in ("mandatory_lenses", "critical_lenses"):
+        for lid in (data.get(key) or []):
+            if lid not in known:
+                print(f"  ✗ {label}: {key}: unknown lens id '{lid}' (no lenses/*/{lid}.md)")
+                n += 1
     return n
 
 
@@ -175,6 +197,7 @@ def cmd_validate_config(args) -> int:
             total += 1
             continue
         errs = _errors(validator, data, p)
+        errs += _check_lens_refs(data if isinstance(data, dict) else {}, p)
         total += errs
         if errs == 0:
             print(f"  ✓ {p}")

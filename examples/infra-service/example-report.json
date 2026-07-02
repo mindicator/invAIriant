@@ -68,6 +68,42 @@
       "status": "verified",
       "source": "ai",
       "affected_components": ["distrib"]
+    },
+    {
+      "id": "CNV-043",
+      "severity": "S1",
+      "lens": "von-neumann",
+      "category": "CONFLICTING_SOURCE_OF_TRUTH",
+      "claim": "On restart the scheduler rebuilds its run queue from the Redis cache instead of Postgres, so cancellations that raced the crash are resurrected.",
+      "evidence": [
+        { "type": "file_lines", "file": "scheduler/recover.go", "lines": "61-97", "commit": "a41f9cc", "description": "queue rebuilt exclusively from cache.ScanJobs(); Postgres reconciliation is a TODO at line 95" },
+        { "type": "doc_code_contradiction", "doc": "docs/ARCHITECTURE.md:203", "code": "scheduler/recover.go:61-97", "description": "ARCHITECTURE says Postgres is the single source of truth for job state and Redis is a disposable accelerator; recovery reads Redis as truth" },
+        { "type": "command_output", "command": "cancel-then-SIGKILL reproduction script", "output": "cancelled job re-executed 3/3 runs" }
+      ],
+      "risk": "Restart changes the meaning of the system: cancelled jobs run, violating tenant expectations and — for destructive jobs — tenant data.",
+      "recommendation": "Rebuild the queue from Postgres, then warm the cache; add a crash-cancel conformance test; implement the TODO at scheduler/recover.go:95.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "hybrid",
+      "affected_components": ["scheduler"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read scheduler/recover.go:61-97; cross-read ARCHITECTURE.md:203; ran the cancel-then-SIGKILL repro (3/3)", "notes": "confirmed split-brain on recovery" }
+    },
+    {
+      "id": "CNV-044",
+      "severity": "S2",
+      "lens": "parnas",
+      "category": "BOUNDARY_BYPASS",
+      "claim": "Tenant API handlers construct scheduler-internal types directly, bypassing the submission contract.",
+      "evidence": [
+        { "type": "file_lines", "file": "api/handlers/jobs.go", "lines": "210-232", "commit": "a41f9cc", "description": "imports scheduler/internal/model and sets private queue hints" }
+      ],
+      "risk": "Scheduler refactors now break the API layer, and queue hints become an undocumented tenant-visible behavior.",
+      "recommendation": "Extend the public submission DTO with the one hint actually needed; add an import-boundary lint rule (depguard).",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["api", "scheduler"],
+      "verification": { "verified_by": "claude-agent-2", "method": "read api/handlers/jobs.go:210-232; confirmed the scheduler/internal import", "notes": "localized leak" }
     }
   ],
   "observations": [
@@ -85,7 +121,9 @@
     "weakest_reason": "a threat-model row was closed on paper while the control did not exist (CNV-041) — exactly what this lens exists to catch",
     "required_actions": [
       { "action": "Scrub env at log boundary + rotate exposed keys + add log-schema conformance test", "finding_ids": ["CNV-041"], "owner": "d.reyes", "deadline": "2026-06-24", "blocking": true },
-      { "action": "Idempotent webhook delivery + timeout-after-delivery test", "finding_ids": ["CNV-042"], "owner": "platform", "blocking": true }
+      { "action": "Idempotent webhook delivery + timeout-after-delivery test", "finding_ids": ["CNV-042"], "owner": "platform", "blocking": true },
+      { "action": "Recovery rebuilds from Postgres, then warms the cache; add a crash-cancel conformance test", "finding_ids": ["CNV-043"], "owner": "scheduler team", "blocking": true },
+      { "action": "Public submission DTO + depguard import-boundary rule", "finding_ids": ["CNV-044"], "owner": "api team", "blocking": false }
     ]
   }
 }

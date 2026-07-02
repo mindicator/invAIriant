@@ -26,6 +26,18 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
 - **Packaging** (`pyproject.toml`): the CLI installs as the `invairiant`
   console command (`pip install -e .`), with robust framework-root discovery
   ($INVAIRIANT_HOME → repo layout → upward search).
+- **Self-audit** (`docs/audits/2026-07-03-self-audit.{md,json}`): the first
+  full-scale audit of the framework against itself — verdict pass.
+
+### Fixed
+
+- Closed self-audit finding **INV-001**: config `mandatory_lenses` and
+  `critical_lenses` are now cross-checked against the lens library in both
+  `scripts/validate_framework.py` and `invairiant validate-config`, so a
+  typo'd lens id fails at validate time instead of mid-audit.
+- Closed self-audit finding **INV-002**: `examples/infra-service/example-report.json`
+  now defines CNV-043 and CNV-044 (referenced in its verdicts/summary), making
+  it a complete twin of the prose example.
 
 ## [0.1.0] — 2026-07-02
 

@@ -100,6 +100,10 @@ def validate_instance(instance, schema, label: str) -> None:
         errors.append(f"{label}: {loc}: {err.message}")
 
 
+def _known_lens_ids() -> set:
+    return {p.stem for p in LENSES.glob("*/*.md") if p.stem != "README"}
+
+
 def check_configs(schemas: dict[str, dict]) -> None:
     schema = schemas.get("invairiant.config.schema.json")
     if schema is None:
@@ -108,6 +112,7 @@ def check_configs(schemas: dict[str, dict]) -> None:
     if not configs:
         errors.append("examples/: no invairiant.config.yml found")
         return
+    known = _known_lens_ids()
     for path in configs:
         if not HAVE_YAML:
             continue
@@ -117,6 +122,11 @@ def check_configs(schemas: dict[str, dict]) -> None:
             errors.append(f"{path.relative_to(ROOT)}: invalid YAML: {exc}")
             continue
         validate_instance(data, schema, str(path.relative_to(ROOT)))
+        if isinstance(data, dict) and known:
+            for key in ("mandatory_lenses", "critical_lenses"):
+                for lid in (data.get(key) or []):
+                    if lid not in known:
+                        errors.append(f"{path.relative_to(ROOT)}: {key}: unknown lens id '{lid}'")
 
 
 def check_findings(schemas: dict[str, dict]) -> None:
