@@ -16,16 +16,23 @@ pip install -e .     # or: pipx install -e .  → gives the `invairiant` command
 (No install? Run `python3 cli/invairiant.py <command>` directly.) Python 3.9+;
 `jsonschema` + `pyyaml` are pulled in as dependencies.
 
-## Quick use
+## Commands
 
-```bash
-invairiant init --type infra-service
-invairiant validate-config
-invairiant collect-evidence --out evidence.json
-invairiant validate-report docs/audits/2026-06-19.json
-invairiant render-report docs/audits/2026-06-19.json --out report.md
-invairiant ci-gate docs/audits/2026-06-19.json   # exits 1 on open S0/S1
-```
+| Command | Purpose |
+|---|---|
+| `init [--type T]` | scaffold `invairiant.config.yml` |
+| `collect [--range A..B] [--out F]` | build a deterministic evidence bundle (candidate pointers only) |
+| `validate-config [paths…]` | schema-check configs + cross-check lens ids |
+| `validate-report <paths…> [--schema-only] [--md]` | schema **+ semantic** checks on a report |
+| `render-report <report.json> [--out F]` | report JSON → Markdown |
+| `render-comment <report.json> [--out F]` | report JSON → paste-ready PR comment |
+| `ci-gate <report.json> [--max-severity S0\|S1]` | exit non-zero on open S0/S1 |
+| `record <report.json> [--force]` | append distilled, **sanitized** memory to `.invairiant/history/` |
+| `history [--lens L]` | lens-score trends + recurring findings |
 
-Resolves the framework via `$INVAIRIANT_HOME`, the repo layout, or by searching
-upward from the current directory.
+`collect-evidence` is a thin alias for the adapter-only subset of `collect`.
+
+Full spec: [`docs/cli.md`](../docs/cli.md). Worked flow:
+[`docs/demo.md`](../docs/demo.md). Resolves the framework via
+`$INVAIRIANT_HOME`, the repo layout, or by searching upward from the current
+directory.

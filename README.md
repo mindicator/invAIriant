@@ -196,9 +196,11 @@ a critical finding.** Full model: [docs/severity-model.md](docs/severity-model.m
 
 ```text
 README.md                this file
+AGENTS.md                portable agent entrypoint (Codex · Cursor · any agent)
 skill/                   ① the /invairiant agent skill — the primary product
+.cursor/rules/           Cursor rule (mirrors the skill)
 docs/                    methodology · evidence-rules · severity-model ·
-                         audit-workflow · lens-taxonomy · cli · related-work
+                         audit-workflow · lens-taxonomy · cli · demo · related-work
 lenses/                  the lens library (7 packs, 28 lenses)
 templates/               audit-report · finding · pr-comment ·
                          phase-transition-audit · event-triggered-audit
