@@ -16,7 +16,7 @@
 
 **An evidence-based, multi-lens architecture-audit skill (+ CLI) for systems that must not drift.**
 
-`AI-assisted analysis` · `human council` · `evidence first` · `complex systems, under control`
+`AI-assisted analysis` · `reusable lenses` · `evidence first` · `gates on S0/S1`
 
 <sub>a protocol by <b>mindicator &amp; silicon bags quartet</b></sub>
 
