@@ -163,8 +163,8 @@ Because the framework is lens-heavy, these rules are canon:
 
 ## 9. Change-management extensions (optional)
 
-Two practices inherited from the origin project pair well with the audit
-protocol on high-risk systems; both are optional:
+Two optional practices pair well with the audit protocol on high-risk
+systems:
 
 - **Component participation table** — a change proposal lists every component
   it touches with its role in the change, a status
