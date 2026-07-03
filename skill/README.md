@@ -33,7 +33,7 @@ All under one rule: **no evidence, no finding.**
 ## How it relates to other skills and tools
 
 Other skills and tools are **evidence adapters**, not competitors: the skill
-(often via `invairiant collect-evidence`) runs your tests, linters, scanners,
+(often via `invairiant collect`) runs your tests, linters, scanners,
 and review skills and feeds their output in as *candidate evidence*. Nothing
 any tool says becomes a finding until it survives the evidence-verification
 stage. See [`../docs/evidence-rules.md`](../docs/evidence-rules.md) §7.

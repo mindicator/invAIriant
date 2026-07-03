@@ -137,18 +137,35 @@ supports it.
 
 | Layer | What it is | Status |
 |---|---|---|
-| **① Primary — the agent skill** | [`/invairiant`](skill/SKILL.md): an LLM coding agent runs the audit. Commands: `audit-pr`, `full-audit`, `verify-findings`, `classify-severity`, `synthesize-report`. **This is the product.** | ✅ usable now |
+| **① Primary — the agent skill** | [`/invairiant`](skill/SKILL.md): an LLM coding agent runs the audit. Commands: `audit-pr`, `full-audit`, `verify-findings`, `classify-severity`, `synthesize-report`, `closure-verification`. **This is the product.** | ✅ usable now |
 | **② Secondary — the protocol layer** | [schemas](schemas/) + [templates](templates/) + [prompt pack](prompts/) + [lenses](lenses/) — the reusable contract the skill (or a human) stands on. | ✅ usable now |
-| **③ Helper — a narrow CLI** | [`invairiant`](docs/cli.md): `init`, `collect`, `validate-config`, `validate-report`, `render-report`, `render-comment`, `ci-gate`. **It serves the audit; it never performs one** — no lenses, no findings, no scores. | ✅ reference impl |
+| **③ Helper — a narrow CLI** | [`invairiant`](docs/cli.md): `init`, `collect`, `validate-config`, `validate-report`, `render-report`, `render-comment`, `ci-gate`, `record`, `history`. **It serves the audit; it never performs one** — no lenses, no findings, no scores. | ✅ reference impl |
 
 **Does it pull in other skills?** Yes — by design it *orchestrates* rather
 than *reinvents*. Security scanners, code-review skills, dependency auditors,
 and test runners are **evidence adapters**: the skill (often via
-`invairiant collect-evidence`) runs them, ingests their output as candidate
+`invairiant collect`) runs them, ingests their output as candidate
 evidence, and subjects it to the same verification as any human claim. It is
 the connective protocol that binds evidence, lenses, severity, and
 AI-assisted review into one auditable trail — not a replacement for the tools
 it consumes.
+
+## See it catch what a reviewer misses
+
+Four worked [**case studies**](case-studies/) — one from a **real** diff,
+three illustrative — each shows the diff, the chosen lenses, the verified
+findings, the *kept* rejected hypotheses, and a side-by-side of what a generic
+AI reviewer said versus what the lens caught:
+
+- [**persistent-mesh-transport**](case-studies/persistent-mesh-transport/) *(real)* — a documented
+  "fail-closed" TLS fallback that actually ships an active-probe tell; the
+  finding's recommendation is the real fix that landed.
+- [**ai-agent-refund-bot**](case-studies/ai-agent-refund-bot/) — model output
+  moves customer money with no cap or validation (S0).
+- [**generated-typescript-api**](case-studies/generated-typescript-api/) — one
+  near-duplicate handler silently drops an authz check (S1).
+- [**p2p-network-transport-change**](case-studies/p2p-network-transport-change/)
+  — an ordering assumption plus a distinguishable handshake fingerprint (S1).
 
 ## Evidence rules, in one screen
 
@@ -188,11 +205,14 @@ docs/                    methodology · evidence-rules · severity-model ·
 lenses/                  the lens library (7 packs, 28 lenses)
 templates/               audit-report · finding · pr-comment ·
                          phase-transition-audit · event-triggered-audit
-schemas/                 finding · audit-report · lens · config  (JSON Schema)
+schemas/                 finding · audit-report · lens · config ·
+                         evidence-bundle  (JSON Schema)
 prompts/                 lens-auditor · evidence-verifier ·
                          severity-classifier · report-synthesizer
 cli/                     ③ the narrow invairiant CLI (serves the audit)
+case-studies/            worked audits — 1 real (persistent-mesh-transport) + 3 illustrative
 examples/                minimal-webapp · infra-service · ai-agent-system
+.invairiant/history/     committed, sanitized audit memory (record / history)
 .github/workflows/       framework self-validation
 ```
 
@@ -234,8 +254,11 @@ optional [network-persistence](lenses/domain/network-persistence.md) lens.
 ## Status
 
 **v0.1 alpha.** The protocol layer — docs, 28 lenses, templates, schemas,
-prompts, skill, examples — is usable as-is. CLI/CI product tooling is
-roadmap. Treat the [schemas](schemas/) as the stable contract.
+prompts, skill, examples — is usable as-is, and the `invairiant` CLI ships as
+a working reference implementation (scaffold · collect · validate · render ·
+gate · audit memory) with CI dogfooding it. Packaging (`pip install`) and
+audit-history dashboards remain roadmap. Treat the [schemas](schemas/) as the
+stable contract.
 
 ## License
 

@@ -146,9 +146,9 @@ Two special modes inherited from the origin canon, generalized:
   and `verify-findings` / `classify-severity` / `synthesize-report` run
   individual stages. Humans approve gates.
 - **The CLI is infrastructure, not judgment.** The agent may shell out to
-  `invairiant validate-config`, `collect-evidence`, `validate-report`,
-  `render-report`, and `ci-gate` ([cli.md](cli.md)) — but the CLI never runs a
-  lens, produces a finding, or assigns a score. All judgment stays in the
+  `invairiant validate-config`, `collect`, `validate-report`, `render-report`,
+  `render-comment`, `ci-gate`, and `record` ([cli.md](cli.md)) — but the CLI
+  never runs a lens, produces a finding, or assigns a score. All judgment stays in the
   agent under the prompt pack.
 - Humans own: lens selection, gate decisions, severity overrides (written
   justification), and anything the config marks as blocking.
