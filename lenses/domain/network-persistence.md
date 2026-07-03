@@ -17,7 +17,7 @@ itself a signature.
 
 **Use when:**
 
-- the system is a persistent-mesh network, P2P/overlay network, or
+- the system is a persistent network mesh, P2P/overlay network, or
   anonymity system;
 - transports are designed to traverse hostile or filtered networks;
 - discovery, bootstrap, or config distribution must survive blocking;
