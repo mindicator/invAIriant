@@ -5,7 +5,6 @@
 <br/>
 
 [![CI](https://github.com/mindicator/invairiant/actions/workflows/validate.yml/badge.svg)](https://github.com/mindicator/invairiant/actions/workflows/validate.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
 [![Release: v0.1.1](https://img.shields.io/badge/release-v0.1.1-blue?style=flat-square)](https://github.com/mindicator/invairiant/releases/latest)
 [![Lenses: 28](https://img.shields.io/badge/lenses-28-8A2BE2?style=flat-square)](docs/lens-taxonomy.md)
 [![Packs: 7](https://img.shields.io/badge/packs-7-informational?style=flat-square)](lenses/)
