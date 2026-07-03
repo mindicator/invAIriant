@@ -63,6 +63,14 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
 
 ### Fixed
 
+- **`invairiant record` is idempotent** by audit label — re-recording the same
+  audit is a no-op (use `--force` to override), so repeated runs never skew the
+  `history` trends. Found and fixed during self-audit #2.
+- A **second self-audit** (`docs/audits/2026-07-03-closure-6-phase.{json,md}`)
+  of the phase-1–6 CLI/skill/memory subsystem — verdict pass, three low-severity
+  notes — recorded to memory so `invairiant history` shows a real per-lens
+  trend.
+
 - Closed self-audit finding **INV-001**: config `mandatory_lenses` and
   `critical_lenses` are now cross-checked against the lens library in both
   `scripts/validate_framework.py` and `invairiant validate-config`, so a

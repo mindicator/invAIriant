@@ -783,6 +783,21 @@ def cmd_record(args) -> int:
     hist = Path(args.dir)
     hist.mkdir(parents=True, exist_ok=True)
 
+    # Idempotent by audit label: re-recording the same audit would duplicate
+    # rows and skew `history` trends. Skip unless --force.
+    freg = hist / "finding-registry.jsonl"
+    if freg.exists() and not args.force:
+        seen = set()
+        for line in freg.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                try:
+                    seen.add(json.loads(line).get("audit"))
+                except Exception:  # noqa: BLE001
+                    pass
+        if audit in seen:
+            print(f"audit '{audit}' is already in memory — skipping (use --force to re-record).")
+            return 0
+
     rejected = [h for h in data.get("hypotheses", []) if h.get("rejected_reason")]
     with (hist / "rejected-hypotheses.jsonl").open("a", encoding="utf-8") as f:
         for h in rejected:
@@ -794,7 +809,7 @@ def cmd_record(args) -> int:
             }, ensure_ascii=False) + "\n")
 
     findings = data.get("findings", [])
-    with (hist / "finding-registry.jsonl").open("a", encoding="utf-8") as f:
+    with freg.open("a", encoding="utf-8") as f:
         for fd in findings:
             f.write(json.dumps({
                 "date": date, "audit": audit, "id": fd.get("id"),
@@ -923,6 +938,7 @@ def main(argv=None) -> int:
     prec.add_argument("report")
     prec.add_argument("--audit-id", default=None)
     prec.add_argument("--dir", default=".invairiant/history")
+    prec.add_argument("--force", action="store_true", help="re-record even if this audit is already in memory")
     prec.set_defaults(func=cmd_record)
 
     phi = sub.add_parser("history", help="show lens-score trends and recurring findings from audit memory")

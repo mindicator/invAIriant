@@ -1,0 +1,90 @@
+{
+  "title": "invAIriant self-audit #2 — the CLI, skill, and audit-memory build (phases 1–6)",
+  "date": "2026-07-03",
+  "audit_type": "full-scale",
+  "project": { "name": "invairiant", "type": "protocol", "commit_range": "5d1ee7b..HEAD" },
+  "scope": "The subsystem built across phases 1–6: `invairiant collect`, the audit-pr UX, `render-comment`, the `validate-report` semantic linter, committed audit memory (`record`/`history`), and the skill wiring. Applied to the framework's own repo. Out of scope: the lens library and docs prose (covered by self-audit #1).",
+  "inputs_reviewed": [
+    "cli/invairiant.py at HEAD",
+    "skill/SKILL.md",
+    "schemas/evidence-bundle.schema.json",
+    ".github/workflows/validate.yml (CI smokes)",
+    ".invairiant/history/ (seeded memory)",
+    "git log 5d1ee7b..HEAD (6 phased commits, all CI-green)"
+  ],
+  "participants": ["fable-agent (lens passes, verification, severity, synthesis)", "mindicator (owner, gate)"],
+  "config_ref": "invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "core", "lens": "parnas", "score": 9, "verdict": "the CLI/skill boundary holds: the CLI runs no lenses and produces no findings; judgment lives only in the skill/prompts" },
+    { "pack": "core", "lens": "cormen", "score": 8, "verdict": "the semantic linter encodes the verdict↔severity and reference-integrity invariants; `record` is now idempotent by audit label" },
+    { "pack": "core", "lens": "mcconnell", "score": 8, "verdict": "six small phased commits, CI green throughout, docs/CHANGELOG synced; only gap is unit tests vs CI smokes (CLOSE-003)" },
+    { "pack": "core", "lens": "brooks", "score": 8, "verdict": "one story held across six phases — skill primary, CLI seatbelt, memory sanitized; no entity sprawl" },
+    { "pack": "core", "lens": "dijkstra", "score": 8, "verdict": "the CLI stayed narrow — ten deterministic subcommands, no creep toward 'auditing'" },
+    { "pack": "implementation", "lens": "kernighan", "score": 7, "verdict": "error messages are actionable, but audit memory resolves relative to CWD (CLOSE-001) and the collect fallback scans all files (CLOSE-002)", "evidence_refs": ["CLOSE-001", "CLOSE-002"] },
+    { "pack": "security-safety", "lens": "security-threat", "score": 8, "verdict": "record sanitizes and stores no raw evidence; raw bundles gitignored; subprocess list-form (no shell); no secrets committed" }
+  ],
+  "findings": [
+    {
+      "id": "CLOSE-001",
+      "severity": "S3",
+      "lens": "kernighan",
+      "claim": "Audit memory is resolved relative to the current working directory, so running the CLI from a subdirectory silently misses the committed .invairiant/history/.",
+      "evidence": [
+        { "type": "file_lines", "file": "cli/invairiant.py", "lines": "284-285", "description": "the validate-report memory hook opens Path('.invairiant/history/rejected-hypotheses.jsonl') relative to CWD" },
+        { "type": "file_lines", "file": "cli/invairiant.py", "lines": "940-946", "description": "record/history default --dir '.invairiant/history' is CWD-relative, not repo-root-relative" }
+      ],
+      "risk": "A subdirectory run reports 'no known_rejected' and skips the memory-aware warning with no error — a silent false negative, not a failure.",
+      "recommendation": "Resolve the history dir from `git rev-parse --show-toplevel` (or a config key) with a CWD fallback.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["cli/invairiant.py"]
+    },
+    {
+      "id": "CLOSE-002",
+      "severity": "NOTE",
+      "lens": "kernighan",
+      "claim": "The `collect` grep fallback (no ripgrep) iterates every tracked file until the per-category cap is hit, so on a very large repo with few matches it scans the whole tree.",
+      "evidence": [
+        { "type": "file_lines", "file": "cli/invairiant.py", "lines": "446-471", "description": "_grep fallback loops over all `git ls-files` entries reading each line-by-line; bounded on output (cap) but not on files scanned" }
+      ],
+      "risk": "Slow bundle build / high I/O on large repos; acceptable for the per-PR target use but unbounded in the worst case.",
+      "recommendation": "Cap files/bytes scanned in the fallback, or prefer ripgrep and warn when absent on a large tree.",
+      "confidence": "medium",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["cli/invairiant.py"]
+    },
+    {
+      "id": "CLOSE-003",
+      "severity": "NOTE",
+      "lens": "mcconnell",
+      "claim": "The CLI is covered by CI smokes only; there is no unit-test suite for the semantic linter, record idempotency, or render logic.",
+      "evidence": [
+        { "type": "missing_test", "description": "no tests/ directory; .github/workflows/validate.yml exercises happy paths and one negative case, but there are no unit tests pinning _semantic_report_errors, cmd_record dedup, or render-comment output" }
+      ],
+      "risk": "Regressions in edge cases are caught only if a smoke happens to exercise them.",
+      "recommendation": "Add a small pytest suite for the semantic linter rules, record idempotency, and render-comment formatting.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "ai",
+      "affected_components": ["cli/invairiant.py", ".github/workflows/validate.yml"]
+    }
+  ],
+  "hypotheses": [
+    { "text": "`invairiant record` duplicates memory rows when run twice on the same report, skewing history trends.", "lens": "cormen", "rejected_reason": "Refuted at HEAD — record now dedups by audit label (cli/invairiant.py:790-799); re-running record on the self-audit prints 'already in memory — skipping' and leaves the CSV at 6 rows. Fixed in this phase; kept here as the record of the decision." },
+    { "text": "The local authorship hook could block legitimate commits.", "lens": "security-threat", "rejected_reason": "Refuted — the commit-msg hook rejects only Co-Authored-By/Assisted-By trailers naming an AI agent; ordinary commits (no such trailer) pass. Verified across six phased commits, all accepted." }
+  ],
+  "summary": {
+    "verdict": "pass",
+    "executive_summary": "The six-phase build holds together: the CLI stayed a narrow, judgment-free seatbelt (parnas 9, dijkstra 8), the semantic linter and now-idempotent record encode real invariants (cormen 8), and secrets/raw-evidence handling is sound (security-threat 8). No S0/S1. Three low-severity items remain: audit memory is CWD-relative (CLOSE-001, S3), the collect fallback is unbounded in files scanned (CLOSE-002, NOTE), and the CLI has CI smokes but no unit tests (CLOSE-003, NOTE). The record-duplication risk raised during the audit was fixed in-phase and kept as a recorded, refuted hypothesis.",
+    "strongest_lens": "parnas",
+    "weakest_lens": "kernighan",
+    "weakest_reason": "audit memory resolves relative to CWD (CLOSE-001) and the collect fallback scans all files (CLOSE-002) — both operability papercuts, neither blocking",
+    "required_actions": [
+      { "action": "Resolve .invairiant/history/ from the repo root, not CWD.", "finding_ids": ["CLOSE-001"], "owner": "mindicator", "blocking": false },
+      { "action": "Add a pytest suite for the linter, record idempotency, and render logic.", "finding_ids": ["CLOSE-003"], "owner": "mindicator", "blocking": false }
+    ]
+  },
+  "reviewer_notes": "Second audit recorded to .invairiant/history/, giving `invairiant history` a real per-lens trend. Scope is the phase-1–6 subsystem, scored on the same core lenses as self-audit #1."
+}
