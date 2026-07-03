@@ -20,8 +20,9 @@ _Nothing yet._
 
 ## [0.1.0] — 2026-07-03
 
-First public release. Extracted and generalized from the the origin project audit and
-refactoring canon into a reusable, evidence-first, multi-lens audit protocol
+First public release. Extracted and generalized from a real persistent-mesh
+network project's audit and refactoring canon into a reusable, evidence-first,
+multi-lens audit protocol
 for AI-era codebases. One rule underneath all of it: **no evidence, no
 finding.**
 
@@ -75,9 +76,11 @@ finding.**
 
 - **Examples** (`examples/`): minimal-webapp, infra-service, ai-agent-system
   configs + a worked infra-service report.
-- **Case studies** (`case-studies/`): `persistent-mesh-transport` (**real** diff +
-  finding) and three illustrative — each with the diff, selected lenses,
-  candidate/rejected/verified findings, a schema-valid report, and a
+- **Case studies** (`case-studies/`): four illustrative worked audits
+  (`persistent-mesh-transport`, `ai-agent-refund-bot`,
+  `generated-typescript-api`, `p2p-network-transport-change`) — each with the
+  diff, selected lenses, candidate/rejected/verified findings, a schema-valid
+  report, and a
   side-by-side of **what a normal AI reviewer missed**.
 - **Two self-audits** of the framework recorded to audit memory, so
   `invairiant history` shows a real per-lens trend.

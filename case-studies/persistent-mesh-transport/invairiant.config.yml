@@ -1,0 +1,32 @@
+# Scope config for the persistent-mesh-transport case study (illustrative).
+project:
+  name: persistent-mesh-transport
+  type: p2p-network
+  description: >
+    A persistent-mesh transport node renders its own proxy configs from
+    shell. An own-certificate TLS family must present the node's own SNI, never
+    the cover domain used by the separate camouflaged family.
+
+canonical_docs:
+  - transport/render_params.sh
+  - transport/render_server.sh
+
+mandatory_lenses:
+  - cormen
+  - security-threat
+  - parnas
+  - network-persistence
+
+critical_lenses:
+  - security-threat
+  - network-persistence
+
+risk_assets:
+  - traffic indistinguishability (survives active probing)
+  - user anonymity (no cross-family correlation)
+  - node reachability
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: CRT

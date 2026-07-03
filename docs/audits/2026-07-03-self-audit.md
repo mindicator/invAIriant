@@ -103,9 +103,9 @@ No lens scored below the 6.0 threshold, so no score-triggered findings.
   the two checks cover overlapping-yet-different subsets.
 - **Good-state (mcconnell):** internal link integrity is clean — 139/139
   relative markdown links resolve at `db64b5d`.
-- **Good-state (parnas):** no origin-project (the origin project) jargon leaks into the
-  generic framework; the only mentions are the README origins note and
-  `lenses/domain/network-persistence.md`, by design.
+- **Good-state (parnas):** no origin-project jargon leaks into the generic
+  framework; the origin is referenced only generically (README origins note,
+  `lenses/domain/network-persistence.md`), by design.
 
 ## Unsupported Hypotheses
 

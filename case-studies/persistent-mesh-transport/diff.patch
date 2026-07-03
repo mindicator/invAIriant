@@ -1,0 +1,44 @@
+# Illustrative diff — the FIX that invAIriant's finding recommends.
+# The audit below is of the PRE-FIX state (what a reviewer saw); CRT-001's
+# recommendation is exactly this change. Synthesized from a real, fixed class
+# of defect in persistent-mesh transports; no real project is named.
+
+diff --git a/transport/render_params.sh b/transport/render_params.sh
+--- a/transport/render_params.sh
++++ b/transport/render_params.sh
+@@ render_params() {
+ 	# GENUINE-TLS SNI (the own-cert family). It is the node's OWN domain — a
+ 	# hostname under its served wildcard cert — NEVER the cover domain (the decoy
+-	# identity of the SEPARATE camouflaged family, field cover_sni). Derive it from
+-	# the served wildcard cert's SAN. Fall back to the cover domain ONLY when no
+-	# wildcard cert is present — the SNI guard in render_server.sh then still
+-	# refuses an empty tls_sni for an enabled own-cert family, so a misconfigured
+-	# node fails closed rather than shipping a cert/SNI tell.
+-	local tls_domain
+-	tls_domain="$(cert_san "$TLS_DIR/fullchain.pem" | grep -oE 'DNS:\*\.[A-Za-z0-9.-]+' | head -1 | sed 's/^DNS:\*\./m./')"
+-	[ -n "$tls_domain" ] || tls_domain="$cover"
++	# identity of the SEPARATE camouflaged family, field cover_sni). Derive it from
++	# the served wildcard cert's SAN, else the first concrete (non-wildcard) DNS
++	# SAN. We NEVER fall back to the cover domain: serving the node's OWN cert
++	# under the cover SNI is a cert/SNI active-probe tell AND correlates the
++	# own-cert family with the camouflaged family by shared SNI. If no own-cert
++	# domain is derivable, tls_domain stays EMPTY and the SNI guard fail-closes.
++	local tls_domain tls_san
++	tls_san="$(cert_san "$TLS_DIR/fullchain.pem")"
++	tls_domain="$(printf '%s' "$tls_san" | grep -oE 'DNS:\*\.[A-Za-z0-9.-]+' | head -1 | sed 's/^DNS:\*\./m./')"
++	[ -n "$tls_domain" ] || tls_domain="$(printf '%s' "$tls_san" | grep -oE 'DNS:[A-Za-z0-9.-]+' | grep -vE 'DNS:\*' | head -1 | sed 's/^DNS://')"
+
+diff --git a/transport/render_server.sh b/transport/render_server.sh
+--- a/transport/render_server.sh
++++ b/transport/render_server.sh
+@@ render_server() {
+ 	case " $enabled " in
+ 		*" own-cert-tls "*)
+-			local _tls_sni; _tls_sni="$(params_get "$params" '.tls_sni' '')"
+-			[ -n "$_tls_sni" ] || die "own-cert family enabled but params.tls_sni is empty — set params.tls_sni." ;;
++			local _tls_sni _cover_sni
++			_tls_sni="$(params_get "$params" '.tls_sni' '')"
++			_cover_sni="$(params_get "$params" '.cover_sni' '')"
++			[ -n "$_tls_sni" ] || die "own-cert family enabled but params.tls_sni is empty — set params.tls_sni."
++			[ -n "$_cover_sni" ] && [ "$_tls_sni" = "$_cover_sni" ] && die "own-cert family enabled but params.tls_sni EQUALS cover_sni — serving the node's OWN cert under the cover SNI is a cert/SNI-mismatch tell AND correlates the own-cert family with the camouflaged family." ;;
+ 	esac

@@ -28,7 +28,7 @@ enforced by the framework's own checks.
   lenses get a stub, never a fork ([docs/lens-taxonomy.md](docs/lens-taxonomy.md)).
 - **Schema changes** are contracts — bump thoughtfully; the schemas are the
   stable interface other tooling depends on.
-- **the origin project-specific material** stays out of the generic core; domain
+- **Domain-specific material** stays out of the generic core; domain
   judgment belongs in [`lenses/domain/`](lenses/domain/).
 
 ## Reporting issues

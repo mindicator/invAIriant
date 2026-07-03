@@ -6,9 +6,9 @@ audit-pr` step, which the agent runs.
 
 ## The full flow — `collect → audit-pr → report → render-comment → record`
 
-Setting: a PR changes a shell TLS renderer. This is the real
-[`persistent-mesh-transport`](../case-studies/persistent-mesh-transport/) case; a diff-level
-reviewer approved it.
+Setting: a PR changes a shell TLS renderer. This is the
+[`persistent-mesh-transport`](../case-studies/persistent-mesh-transport/)
+case; a diff-level reviewer approved it.
 
 ### 1 · `collect` — gather the evidence bundle *(CLI)*
 
@@ -32,8 +32,8 @@ The skill selects lenses by risk surface (here: `cormen`, `security-threat`,
 **adversarially verifies** every candidate (refuting two hypotheses — see
 [`rejected-hypotheses.md`](../case-studies/persistent-mesh-transport/rejected-hypotheses.md)),
 classifies severity, and synthesizes
-[`report.json`](../case-studies/persistent-mesh-transport/report.json). The CLI never
-does this part — all judgment lives in the skill.
+[`report.json`](../case-studies/persistent-mesh-transport/report.json). The
+CLI never does this part — all judgment lives in the skill.
 
 ### 3 · `report` — validate it *(CLI)*
 
@@ -56,14 +56,14 @@ $ invairiant render-comment report.json
 
 ## Findings
 
-**MYC-001 (S1, security-threat, confidence high)** — The genuine-TLS SNI
+**CRT-001 (S1, security-threat, confidence high)** — The genuine-TLS SNI
 fallback makes an own-cert family present the node's own certificate under the
-the-cover-protocol cover SNI on nodes without a wildcard cert — a cert/SNI active-probe
+cover domain's SNI on nodes without a wildcard cert — a cert/SNI active-probe
 tell and a cross-family correlation channel.
 - Evidence: diff hunk
 - Risk: … detectable by active probing, and a correlation channel …
 - Fix: Drop the cover fallback; reject tls_sni == cover_sni. (This is exactly
-  the fix in the real commit.)
+  the fix in diff.patch.)
 …
 ```
 
@@ -73,7 +73,7 @@ tell and a cross-family correlation channel.
 $ invairiant ci-gate report.json; echo exit=$?
 ci-gate: blocking severities ['S0', 'S1']; report verdict: pass_with_conditions
 FAILED: 1 open blocking finding(s):
-  ✗ MYC-001 [S1] The genuine-TLS SNI fallback makes an own-cert family …
+  ✗ CRT-001 [S1] The genuine-TLS SNI fallback makes an own-cert family …
 exit=1
 ```
 

@@ -148,14 +148,14 @@ it consumes.
 
 ## See it catch what a reviewer misses
 
-Four worked [**case studies**](case-studies/) — one from a **real** diff,
-three illustrative — each shows the diff, the chosen lenses, the verified
-findings, the *kept* rejected hypotheses, and a side-by-side of what a generic
-AI reviewer said versus what the lens caught:
+Four worked [**case studies**](case-studies/) — illustrative, each modelling a
+real defect class — show the diff, the chosen lenses, the verified findings,
+the *kept* rejected hypotheses, and a side-by-side of what a generic AI
+reviewer said versus what the lens caught:
 
-- [**persistent-mesh-transport**](case-studies/persistent-mesh-transport/) *(real)* — a documented
-  "fail-closed" TLS fallback that actually ships an active-probe tell; the
-  finding's recommendation is the real fix that landed.
+- [**persistent-mesh-transport**](case-studies/persistent-mesh-transport/)
+  — a documented "fail-closed" TLS fallback that actually ships an active-probe
+  tell; the finding's recommendation *is* the fix.
 - [**ai-agent-refund-bot**](case-studies/ai-agent-refund-bot/) — model output
   moves customer money with no cap or validation (S0).
 - [**generated-typescript-api**](case-studies/generated-typescript-api/) — one
@@ -208,7 +208,7 @@ schemas/                 finding · audit-report · lens · config ·
 prompts/                 lens-auditor · evidence-verifier ·
                          severity-classifier · report-synthesizer
 cli/                     ③ the narrow invairiant CLI (serves the audit)
-case-studies/            worked audits — 1 real (persistent-mesh-transport) + 3 illustrative
+case-studies/            4 illustrative worked audits (diff → lenses → report)
 examples/                minimal-webapp · infra-service · ai-agent-system
 .invairiant/history/     committed, sanitized audit memory (record / history)
 .github/workflows/       framework self-validation
@@ -240,14 +240,14 @@ authorship is credited as *mindicator & silicon bags quartet*. See
 
 ## Origins
 
-invAIriant was extracted from the audit and refactoring canon of
-**the origin project**, a persistent-mesh private network where user safety is
-functional requirement #1 and every architecturally significant change is
-audited. The general-engineering lenses, the 0–10 scale, the
-score-to-severity mapping, the anti-averaging rules, and the audit types are
-generalizations of that canon; the origin project's domain judgment survives in the
-optional [network-persistence](lenses/domain/network-persistence.md) lens.
-**Nothing in the core framework requires knowing the origin project.**
+invAIriant was extracted from the audit and refactoring canon of a real
+**persistent-mesh network project**, where user safety is a functional
+requirement and every architecturally significant change is audited. The
+general-engineering lenses, the 0–10 scale, the score-to-severity mapping, the
+anti-averaging rules, and the audit types are generalizations of that canon;
+that project's domain judgment survives in the optional
+[network-persistence](lenses/domain/network-persistence.md) lens. **Nothing in
+the core framework requires knowing the origin project.**
 
 ## Status
 

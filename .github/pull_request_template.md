@@ -16,7 +16,7 @@
       0–10 scoring rubric
 - [ ] No change weakens "no evidence, no finding," the anti-averaging rule,
       or the observation/finding separation
-- [ ] the origin project-specific material stays out of the generic core
+- [ ] Domain-specific material stays out of the generic core
 
 ## Evidence
 
