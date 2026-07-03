@@ -208,8 +208,85 @@ def cmd_validate_config(args) -> int:
     return 0
 
 
+_ID_RE = re.compile(r"^[A-Z][A-Z0-9]*-[0-9]{3,}$")
+
+
+def _report_threshold(config_path: str) -> float:
+    try:
+        import yaml
+        p = Path(config_path)
+        if p.exists():
+            cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            return float((cfg.get("severity_policy") or {}).get("low_score_threshold", 6.0))
+    except Exception:  # noqa: BLE001
+        pass
+    return 6.0
+
+
+def _semantic_report_errors(data: dict, low_threshold: float):
+    """Protocol rules the JSON schema can't express. Returns (errors, warnings)."""
+    errs, warns = [], []
+    findings = data.get("findings", [])
+    ids = [f.get("id") for f in findings]
+    idset = set(ids)
+    for d in {i for i in ids if ids.count(i) > 1}:
+        errs.append(f"duplicate finding id '{d}'")
+    # S0/S1 confidence (belt-and-suspenders over the schema)
+    for f in findings:
+        if f.get("severity") in ("S0", "S1") and f.get("confidence") not in ("high", "medium"):
+            errs.append(f"{f.get('id')}: {f.get('severity')} requires confidence high/medium (got {f.get('confidence')})")
+    # verdict must derive from open findings, never from score averages
+    verdict = (data.get("summary") or {}).get("verdict")
+    openf = [f for f in findings if f.get("status") != "rejected"]
+    if any(f.get("severity") == "S0" for f in openf) and verdict != "fail":
+        errs.append(f"open S0 finding present but verdict is '{verdict}' (must be 'fail')")
+    if any(f.get("severity") == "S1" for f in openf) and verdict == "pass":
+        errs.append("open S1 finding present but verdict is 'pass' (must be at best 'pass_with_conditions')")
+    # lens-score referential integrity
+    lens_with_finding = {f.get("lens") for f in findings}
+    for s in data.get("lens_scores", []):
+        lens = s.get("lens")
+        try:
+            score = float(s.get("score"))
+        except (TypeError, ValueError):
+            score = None
+        if score is not None and score < low_threshold:
+            if lens not in lens_with_finding and not (s.get("evidence_refs") or []):
+                warns.append(f"lens '{lens}' scored {score} (< {low_threshold}) but has no finding and no evidence_refs")
+        for r in (s.get("evidence_refs") or []):
+            if _ID_RE.match(str(r)) and r not in idset:
+                errs.append(f"lens '{lens}' evidence_ref '{r}' is not a finding id in this report")
+    # required_actions must reference real findings
+    for a in (data.get("summary") or {}).get("required_actions", []):
+        for fid in (a.get("finding_ids") or []):
+            if fid not in idset:
+                errs.append(f"required_action references unknown finding id '{fid}'")
+    # rejected hypotheses must be kept, not dropped
+    if "hypotheses" not in data:
+        warns.append("no 'hypotheses' section — rejected hypotheses must be kept, not deleted")
+    return errs, warns
+
+
+_MD_REQUIRED = ["Verdict", "Hypotheses"]
+
+
+def _md_report_errors(text: str, label: str):
+    errs = []
+    if not re.search(r"^#\s+\S", text, re.M):
+        errs.append(f"{label}: no H1 title")
+    if not re.search(r"^##\s+\S", text, re.M):
+        errs.append(f"{label}: no section headings")
+    for needle in _MD_REQUIRED:
+        if needle.lower() not in text.lower():
+            errs.append(f"{label}: missing '{needle}'")
+    for e in errs:
+        print(f"  ✗ {e}")
+    return len(errs)
+
+
 def cmd_validate_report(args) -> int:
-    validator = _validator("audit-report")
+    threshold = _report_threshold(args.config)
+    validator = None if args.md else _validator("audit-report")
     total = 0
     for p in args.paths:
         path = Path(p)
@@ -217,19 +294,33 @@ def cmd_validate_report(args) -> int:
             print(f"  ✗ {p}: not found")
             total += 1
             continue
+        text = path.read_text(encoding="utf-8")
+        if args.md or p.endswith(".md"):
+            n = _md_report_errors(text, p)
+            total += n
+            if n == 0:
+                print(f"  ✓ {p} (markdown structure)")
+            continue
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as exc:
+            data = json.loads(text)
+        except Exception as exc:  # noqa: BLE001
             print(f"  ✗ {p}: invalid JSON: {exc}")
             total += 1
             continue
         errs = _errors(validator, data, p)
+        if not args.schema_only:
+            serrs, warns = _semantic_report_errors(data, threshold)
+            for w in warns:
+                print(f"  ⚠ {p}: {w}")
+            for e in serrs:
+                print(f"  ✗ {p}: {e}")
+            errs += len(serrs)
         total += errs
         if errs == 0:
             print(f"  ✓ {p}")
     if total:
         _die(f"{total} report problem(s)", 1)
-    print("OK: report valid.")
+    print("OK: report valid." + ("" if args.md or args.schema_only else " (schema + semantic)"))
     return 0
 
 
@@ -668,8 +759,11 @@ def main(argv=None) -> int:
     pc.add_argument("paths", nargs="*")
     pc.set_defaults(func=cmd_validate_config)
 
-    pr = sub.add_parser("validate-report", help="validate an audit report against its schema")
+    pr = sub.add_parser("validate-report", help="validate an audit report: schema + protocol semantics")
     pr.add_argument("paths", nargs="+")
+    pr.add_argument("--schema-only", action="store_true", help="skip the semantic checks")
+    pr.add_argument("--md", action="store_true", help="structural lint of a markdown report (no schema)")
+    pr.add_argument("--config", default="invairiant.config.yml", help="config for the low-score threshold")
     pr.set_defaults(func=cmd_validate_report)
 
     pcol = sub.add_parser("collect", help="gather a deterministic evidence bundle for the skill")

@@ -32,8 +32,21 @@ jobs:
 
       - name: CLI smoke test (validate-config / validate-report)
         run: |
-          python3 cli/invairiant.py validate-config invairiant.config.yml examples/*/invairiant.config.yml
-          python3 cli/invairiant.py validate-report examples/infra-service/example-report.json docs/audits/2026-07-03-self-audit.json
+          python3 cli/invairiant.py validate-config invairiant.config.yml examples/*/invairiant.config.yml case-studies/*/invairiant.config.yml
+          python3 cli/invairiant.py validate-report examples/infra-service/example-report.json docs/audits/2026-07-03-self-audit.json case-studies/*/report.json
+
+      - name: CLI smoke test (validate-report semantic catches an inconsistency)
+        run: |
+          python3 - <<'PY' > /tmp/bad-report.json
+          import json
+          d = json.load(open('docs/audits/2026-07-03-self-audit.json'))
+          d['findings'][0]['severity'] = 'S0'   # now an open S0, but verdict is 'pass'
+          json.dump(d, open('/tmp/bad-report.json','w'))
+          PY
+          if python3 cli/invairiant.py validate-report /tmp/bad-report.json; then
+            echo "semantic linter should have failed on S0-with-pass"; exit 1
+          fi
+          echo "validate-report semantic linter correctly failed"
 
       - name: CLI smoke test (ci-gate must FAIL on the S0 example)
         run: |

@@ -46,6 +46,14 @@ follows Keep a Changelog; versions track the protocol, not any tooling.
   severity-sorted findings with evidence, conditions, and kept hypotheses. The
   deliverable of `/invairiant audit-pr`. No posting, no judgment.
 
+### Changed
+
+- **`invairiant validate-report`** now runs a **semantic pass** on top of schema
+  validation: verdict↔severity consistency (open S0 → fail; open S1 → not
+  pass), S0/S1 confidence, `lens_scores`/`required_actions` referential
+  integrity, and a kept-`hypotheses` check. `--schema-only` skips it; `--md`
+  structurally lints a rendered markdown report.
+
 ### Fixed
 
 - Closed self-audit finding **INV-001**: config `mandatory_lenses` and

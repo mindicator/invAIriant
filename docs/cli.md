@@ -58,10 +58,25 @@ Validate config(s) against
 [`schemas/invairiant.config.schema.json`](../schemas/invairiant.config.schema.json).
 Default path `invairiant.config.yml`. Exit 0 = valid, 1 = problems.
 
-### `invairiant validate-report <paths...>`
+### `invairiant validate-report <paths...> [--schema-only] [--md]`
 Validate audit report JSON against
 [`schemas/audit-report.schema.json`](../schemas/audit-report.schema.json)
-(findings resolve against the finding schema). Exit 0/1.
+(findings resolve against the finding schema) **plus a semantic pass** for the
+protocol rules a schema cannot express:
+
+- verdict derives from open findings, never from score averages (open S0 →
+  `fail`; open S1 → not `pass`);
+- S0/S1 findings carry high/medium confidence;
+- `lens_scores` referential integrity: `evidence_refs` that look like finding
+  ids must exist; a lens scoring below the config's `low_score_threshold` with
+  no finding and no `evidence_refs` is flagged (warning);
+- `required_actions` reference real finding ids;
+- the report keeps a `hypotheses` section (rejected hypotheses are not
+  deleted).
+
+`--schema-only` runs just the schema check. `--md` structurally lints a
+**rendered markdown** report (H1, sections, verdict, kept hypotheses present) —
+JSON stays the source of truth. Exit 0 = valid, 1 = problems.
 
 ### `invairiant collect [--range A..B] [--out F] [--run-adapters] [--cap N]`
 Gather a deterministic **evidence bundle** for the skill — the CLI's core

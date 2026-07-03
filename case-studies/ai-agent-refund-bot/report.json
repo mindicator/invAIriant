@@ -26,7 +26,7 @@
     { "pack": "ai-generated-code", "lens": "oracle-boundary", "score": 2, "verdict": "model output (amount_cents) flows directly into a money-movement call with no schema bound, allowlist, or deterministic cap between model and provider (RB-001)", "evidence_refs": ["RB-001"] },
     { "pack": "security-safety", "lens": "leveson", "score": 3, "verdict": "the execute action is unsafe in most states (no per-ticket cap, no human approval in the executing path, no reversibility bound) and nothing in code prevents it being issued there (RB-002)", "evidence_refs": ["RB-002"] },
     { "pack": "core", "lens": "parnas", "score": 6, "verdict": "the tool boundary itself is clean; the defect is what crosses it, not module coupling (obs O-1)" },
-    { "pack": "core", "lens": "turing", "score": 3, "verdict": "the JSON-decode fallback retries once and then raises; the uncertain/garbage/contradiction path has no typed outcome (RB-001 evidence, obs O-2)" }
+    { "pack": "core", "lens": "turing", "score": 3, "verdict": "the JSON-decode fallback retries once and then raises; the uncertain/garbage/contradiction path has no typed outcome (RB-001 evidence, obs O-2)", "evidence_refs": ["RB-001"] }
   ],
   "findings": [
     {
