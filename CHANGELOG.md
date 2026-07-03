@@ -7,6 +7,10 @@ follows Keep a Changelog; versions track the protocol.
 
 ### Added
 
+- **Unit-test suite** (`tests/`, 40 tests) for the CLI — parser dispatch,
+  `validate-report` semantic-linter rules, secret redaction, `record`
+  idempotency + sanitization, claim-key matching, and `history` trends. CI runs
+  `pytest`. (Closes self-audit finding CLOSE-003.)
 - **Roadmap for v0.2** ([`ROADMAP.md`](ROADMAP.md)) — hardening and reach, **no
   new lenses**.
 - A **60-second Quickstart** at the top of the README and a demo PR-comment
@@ -16,6 +20,8 @@ follows Keep a Changelog; versions track the protocol.
 
 - **Origin narrative** reframed (README / NOTICE): invAIriant was forged in
   AI-assisted development of complex, high-load systems — that is its story.
+- **`pyproject.toml` version synced to 0.1.1** to match the released protocol
+  version.
 
 ## [0.1.1] — 2026-07-03
 

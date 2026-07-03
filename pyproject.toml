@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invairiant"
-version = "0.1.0"
+version = "0.1.1"
 description = "Helper CLI for the invAIriant agentic audit protocol — it serves the audit, it does not audit."
 readme = "cli/README.md"
 requires-python = ">=3.9"
@@ -24,6 +24,9 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "mindicator & silicon bags quartet" }]
 keywords = ["audit", "architecture", "evidence", "llm", "code-review"]
 dependencies = ["jsonschema>=4.18", "pyyaml>=6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
 
 [project.urls]
 Homepage = "https://github.com/mindicator/invairiant"
@@ -37,3 +40,8 @@ invairiant = "invairiant:main"
 [tool.setuptools]
 package-dir = { "" = "cli" }
 py-modules = ["invairiant"]
+
+# Unit tests for the CLI live in tests/ and load cli/invairiant.py by path
+# (it is a single script, not an installed package). Run: python -m pytest -q
+[tool.pytest.ini_options]
+testpaths = ["tests"]
