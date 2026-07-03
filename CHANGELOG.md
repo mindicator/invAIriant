@@ -5,6 +5,10 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.1.2] — 2026-07-04
+
 ### Added
 
 - **Two real (redacted) case studies** (`case-studies/`): `low-latency-runtime`
@@ -17,7 +21,7 @@ follows Keep a Changelog; versions track the protocol.
 - **GitHub Action** ([`action.yml`](action.yml)) — a composite action that
   validates an audit report (schema + semantic), renders it into the job
   summary, and **gates CI on open S0/S1** findings. Use it as
-  `uses: mindicator/invairiant@v0.1.1`. Docs:
+  `uses: mindicator/invairiant@v0.1.2`. Docs:
   [`docs/github-action.md`](docs/github-action.md).
 - **Unit-test suite** (`tests/`, 55 tests) for the CLI — parser dispatch,
   `validate-report` semantic-linter rules, secret redaction, `record`
@@ -33,8 +37,7 @@ follows Keep a Changelog; versions track the protocol.
 
 - **Origin narrative** reframed (README / NOTICE): invAIriant was forged in
   AI-assisted development of complex, high-load systems — that is its story.
-- **`pyproject.toml` version synced to 0.1.1** to match the released protocol
-  version.
+- **`pyproject.toml` version bumped to 0.1.2** for this release.
 
 ### Fixed
 
@@ -141,6 +144,7 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/mindicator/invairiant/releases/tag/v0.1.2
 [0.1.1]: https://github.com/mindicator/invairiant/releases/tag/v0.1.1
 [0.1.0]: https://github.com/mindicator/invairiant/releases/tag/v0.1.0

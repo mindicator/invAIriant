@@ -1,6 +1,6 @@
 # Roadmap
 
-invAIriant is at **v0.1.1**. The core protocol — evidence rules, severity
+invAIriant is at **v0.1.2**. The core protocol — evidence rules, severity
 model, lenses, schemas, prompts, the skill, and the CLI — is stable. **v0.2 is
 hardening and reach, not new surface.**
 
