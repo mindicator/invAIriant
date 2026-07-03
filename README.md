@@ -45,37 +45,28 @@ one rule that keeps it honest:
 
 ## Quick start
 
-**The primary way is the agent skill.** Install it, then drive the audit with
-commands:
+**Primary — the agent skill.** Install it, then audit from the agent:
 
 ```bash
-# Install as a project skill (Claude Code / compatible agents)
 mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
-
-#   in the agent:
-#   /invairiant audit-pr                      # PR-scoped: checklist + <=2 lenses
-#   /invairiant audit-pr --lenses turing,security-threat
-#   /invairiant full-audit                    # whole repo, mandatory lenses
-#   /invairiant verify-findings ...           # stage 2 only
-#   /invairiant classify-severity ...         # stage 3 only
-#   /invairiant synthesize-report ...         # stage 4 only
-#   /invairiant closure-verification          # after a fix wave
+# then, in the agent:
+#   /invairiant audit-pr        # audit the current diff/PR → a PR comment
+#   /invairiant full-audit      # whole repo, mandatory lenses → a report
 ```
 
-**The CLI is the seatbelt around it** (it never audits — no lenses, no
-findings, no scores):
+**Helper — the CLI seatbelt** (never audits — no lenses, findings, or scores):
 
 ```bash
-pip install -e .                          # gives the `invairiant` command
-invairiant init --type infra-service      # scaffold the config
-invairiant validate-config                # schema-check it
-invairiant ci-gate docs/audits/x.json     # fail CI on open S0/S1
+pip install -e .                                        # the `invairiant` command
+invairiant init --type infra-service                    # scaffold the config
+invairiant collect --out .invairiant/cache/bundle.json  # evidence bundle
+invairiant ci-gate docs/audits/x.json                   # fail CI on open S0/S1
 ```
 
-**No tooling at all?** The protocol runs by hand: copy a config from
-[`examples/`](examples/), then follow [docs/audit-workflow.md](docs/audit-workflow.md)
-using each lens file's Prompt Block and [templates/](templates/). Worked
-example: [`examples/infra-service/example-audit.md`](examples/infra-service/example-audit.md).
+See the **[full demo flow](docs/demo.md)** — `collect → audit-pr → report →
+render-comment → record` — with real output. No tooling at all? Run the
+protocol by hand from [`examples/`](examples/) +
+[docs/audit-workflow.md](docs/audit-workflow.md).
 
 ## How it works — the four-stage pipeline
 
