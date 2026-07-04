@@ -38,6 +38,9 @@ The check itself lives in [`scripts/release-gate.sh`](scripts/release-gate.sh)
 no CI runs yet, or any non-`success` check blocks the release. Last-resort
 override: `git push --no-verify`.
 
+**Publishing to PyPI** (build from the tag, upload the immutable version) is a
+separate maintainer step — see [docs/publishing.md](docs/publishing.md).
+
 ## Scope of changes
 
 - **New lenses** go in the right pack with a kebab-case id; cross-listed
