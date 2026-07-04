@@ -33,8 +33,24 @@ the gate.
 | `report` | — | Path to the audit report JSON to validate + gate on |
 | `max-severity` | `S1` | `S1` blocks S0+S1; `S0` blocks only S0 |
 | `collect` | `false` | Also generate `invairiant-bundle.json` (an evidence bundle for an agent step or artifact) |
-| `range` | working tree | git range for `collect`, e.g. `origin/main...HEAD` |
+| `scope` | working | bounded scope for `collect`: `working` / `range` / `commit` / `module` / `adr` / `rp` / `pr` / `repo` |
+| `range` | — | git range for `collect --scope range`, e.g. `origin/main...HEAD` |
+| `commit` | — | commit sha for `--scope commit` |
+| `pr` | — | PR number for `--scope pr` (needs a GitHub remote + `gh`/token or the pull ref; check the PR out for full signal fidelity) |
+| `path` | — | dir/file for `--scope module`, or the ADR / proposal file for `--scope adr` / `rp` |
+| `narrow` | — | restrict an `adr`/`rp` scope's code to this subtree |
 | `invairiant-ref` | `v0.2.2` | framework ref to run (tag / branch / sha) |
+
+The `collect` step passes only the scope flags you set, so it stays a **bounded**
+gather. Example — bundle a PR by number for an agent step:
+
+```yaml
+- uses: mindicator/invairiant@v0.2.2
+  with:
+    collect: true
+    scope: pr
+    pr: "123"
+```
 
 ## How it works
 

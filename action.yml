@@ -17,8 +17,28 @@ inputs:
     description: 'If "true", also generate an evidence bundle at invairiant-bundle.json (for artifact upload / an agent step).'
     required: false
     default: "false"
+  scope:
+    description: "bounded scope for collect: working | range | commit | module | adr | rp | pr | repo (empty = working, or range if 'range' is set)."
+    required: false
+    default: ""
   range:
-    description: "git range for collect, e.g. origin/main...HEAD (empty = working-tree changes)."
+    description: "git range for collect, e.g. origin/main...HEAD (--scope range)."
+    required: false
+    default: ""
+  commit:
+    description: "commit sha for collect (--scope commit)."
+    required: false
+    default: ""
+  pr:
+    description: "pull-request number for collect (--scope pr; needs a GitHub remote + gh/token or the pull ref)."
+    required: false
+    default: ""
+  path:
+    description: "module dir/file, ADR file, or refactoring-proposal file for collect (--scope module|adr|rp)."
+    required: false
+    default: ""
+  narrow:
+    description: "restrict an adr/rp scope's code to this subtree (--narrow)."
     required: false
     default: ""
   invairiant-ref:
@@ -46,9 +66,23 @@ runs:
     - name: Collect evidence bundle (optional)
       if: ${{ inputs.collect == 'true' }}
       shell: bash
+      env:                       # pass via env — never interpolate inputs into the script
+        IN_SCOPE: ${{ inputs.scope }}
+        IN_RANGE: ${{ inputs.range }}
+        IN_COMMIT: ${{ inputs.commit }}
+        IN_PR: ${{ inputs.pr }}
+        IN_PATH: ${{ inputs.path }}
+        IN_NARROW: ${{ inputs.narrow }}
       run: |
-        python "$INVAIRIANT_HOME/cli/invairiant.py" collect \
-          --range "${{ inputs.range }}" --out invairiant-bundle.json
+        set -euo pipefail
+        args=(collect --out invairiant-bundle.json)
+        if [ -n "$IN_SCOPE" ];  then args+=(--scope  "$IN_SCOPE");  fi
+        if [ -n "$IN_RANGE" ];  then args+=(--range  "$IN_RANGE");  fi
+        if [ -n "$IN_COMMIT" ]; then args+=(--commit "$IN_COMMIT"); fi
+        if [ -n "$IN_PR" ];     then args+=(--pr     "$IN_PR");     fi
+        if [ -n "$IN_PATH" ];   then args+=(--path   "$IN_PATH");   fi
+        if [ -n "$IN_NARROW" ]; then args+=(--narrow "$IN_NARROW"); fi
+        python "$INVAIRIANT_HOME/cli/invairiant.py" "${args[@]}"
 
     - name: Validate report (schema + semantic)
       if: ${{ inputs.report != '' }}
