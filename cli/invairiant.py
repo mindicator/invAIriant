@@ -678,12 +678,20 @@ def _resolve_scope(args) -> dict:
                 "docs": [], "bounded": True, "snapshot": True,
                 "note": f"tracked files under {path} (snapshot)"}
 
-    if kind == "adr":
-        adr = args.path
-        if not adr or not Path(adr).is_file():
-            raise ScopeError("--scope adr requires --path <adr-file>")
-        text = Path(adr).read_text(encoding="utf-8", errors="ignore")
-        docs = [{"path": adr, "excerpt": text[:8000]}]
+    if kind in ("adr", "rp"):
+        # A doc-vs-code scope: a decision/proposal document plus the tracked code
+        # it references. Same bounding + fail-closed machinery for both; only the
+        # framing differs — an ADR is a *made* decision (audit for drift: does the
+        # code match?), an RP is a *proposed* change (audit for risk: would
+        # applying it break invariants?). The referenced code is a snapshot.
+        label = "ADR" if kind == "adr" else "refactoring proposal"
+        pin = "the decision area" if kind == "adr" else "the refactor's blast radius"
+        src = args.path
+        if not src or not Path(src).is_file():
+            noun = "adr" if kind == "adr" else "proposal"
+            raise ScopeError(f"--scope {kind} requires --path <{noun}-file>")
+        text = Path(src).read_text(encoding="utf-8", errors="ignore")
+        docs = [{"path": src, "excerpt": text[:8000]}]
         paths, idents = _extract_adr_refs(text)
         tracked = set(_ls_files())
         refs = set()
@@ -699,7 +707,7 @@ def _resolve_scope(args) -> dict:
                 if len(refs) > _ADR_MAX_SCOPE_FILES:
                     break
                 p = Path(f)
-                if not p.is_file() or str(p) == adr:
+                if not p.is_file() or str(p) == src:
                     continue
                 try:
                     if p.stat().st_size > _MAX_FILE_BYTES or _is_probably_binary(p):
@@ -715,17 +723,17 @@ def _resolve_scope(args) -> dict:
         files = sorted(refs)
         if not files:
             raise ScopeError(
-                "ADR references did not resolve to tracked code"
+                f"{label} references did not resolve to tracked code"
                 + (f" under --narrow '{narrow}'" if narrow else "; re-run with --narrow <path>"))
         broad_limit = _adr_broad_limit(len(tracked))
         if not narrow and len(files) > broad_limit:
             raise ScopeError(
-                f"ADR references resolved too broadly ({len(files)} of {len(tracked)} "
+                f"{label} references resolved too broadly ({len(files)} of {len(tracked)} "
                 f"tracked files, over the {broad_limit}-file bound); re-run with "
-                "--narrow <path> to pin the decision area")
-        return {"kind": kind, "target": adr, "files": files, "diff": None, "docs": docs,
+                f"--narrow <path> to pin {pin}")
+        return {"kind": kind, "target": src, "files": files, "diff": None, "docs": docs,
                 "bounded": True, "snapshot": True,
-                "note": f"ADR + the code it references ({len(files)} files)"
+                "note": f"{label} + the code it references ({len(files)} files)"
                         + (f", narrowed to {narrow}" if narrow else "")}
 
     if kind == "repo":
@@ -755,7 +763,7 @@ def _scope_detail(scope: dict) -> dict:
         _, st, _ = _run(["git", "diff", "--stat"])
         changed = [{"status": l[:2].strip(), "file": l[3:]}
                    for l in ns.splitlines() if l.strip()]
-    else:  # module / adr / repo — a snapshot, not a change
+    else:  # module / adr / rp / repo — a snapshot, not a change
         return {"kind": kind, "target": target, "snapshot": True,
                 "changed_files": [], "diffstat": ""}
     return {"kind": kind, "target": target, "changed_files": changed,
@@ -773,7 +781,7 @@ def _generated_mass(scope: dict) -> dict:
     elif kind == "working":
         num = _run(["git", "diff", "--numstat"])[1]
         short = _run(["git", "diff", "--shortstat"])[1]
-    else:  # module / adr / repo — a snapshot: report the size of the file set
+    else:  # module / adr / rp / repo — a snapshot: report the size of the file set
         sized, total = [], 0
         for f in scope["files"]:
             p = Path(f)
@@ -840,7 +848,7 @@ def cmd_collect(args) -> int:
     scan_files = None if scope["kind"] == "repo" else scope["files"]
 
     cfg, docs = _config_and_docs()
-    docs = list(docs) + list(scope.get("docs", []))   # ADR text joins canonical docs
+    docs = list(docs) + list(scope.get("docs", []))   # ADR / proposal text joins canonical docs
     git_info = {
         "head": _git(["rev-parse", "HEAD"]),
         "branch": _git(["rev-parse", "--abbrev-ref", "HEAD"]),
@@ -1201,12 +1209,14 @@ def main(argv=None) -> int:
     pr.set_defaults(func=cmd_validate_report)
 
     pcol = sub.add_parser("collect", help="gather a deterministic, scope-bounded evidence bundle for the skill")
-    pcol.add_argument("--scope", choices=["working", "range", "commit", "module", "adr", "repo"],
+    pcol.add_argument("--scope", choices=["working", "range", "commit", "module", "adr", "rp", "repo"],
                       default=None, help="bounded audit scope (default: range if --range given, else working)")
     pcol.add_argument("--range", default=None, help="git range A..B (for --scope range)")
     pcol.add_argument("--commit", default=None, help="commit sha (for --scope commit)")
-    pcol.add_argument("--path", default=None, help="module dir/file (--scope module) or ADR file (--scope adr)")
-    pcol.add_argument("--narrow", default=None, help="restrict an ADR scope's code to this subtree")
+    pcol.add_argument("--path", default=None,
+                      help="module dir/file (--scope module), ADR file (--scope adr), or "
+                           "refactoring-proposal file (--scope rp)")
+    pcol.add_argument("--narrow", default=None, help="restrict an adr/rp scope's code to this subtree")
     pcol.add_argument("--out", default=None, help="write bundle here (convention: .invairiant/cache/, gitignored)")
     pcol.add_argument("--run-adapters", action="store_true", help="also run declared evidence_adapters (slower)")
     pcol.add_argument("--timeout", type=int, default=180)

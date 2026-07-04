@@ -93,6 +93,44 @@ class TestADR:
         assert cli._adr_broad_limit(200) == 80                        # 0.4 share in between
 
 
+class TestRP:
+    """Refactoring-proposal scope: same doc↔code bounding as ADR, its own kind."""
+
+    def test_resolves_referenced_code(self, cli, tmp_path):
+        rp = tmp_path / "rp.md"
+        rp.write_text("Proposal: split the resolver in `cli/invairiant.py` "
+                      "(`_resolve_scope`) into per-kind handlers.")
+        s = cli._resolve_scope(_ns(scope="rp", path=str(rp)))
+        assert s["kind"] == "rp" and "cli/invairiant.py" in s["files"]
+        assert s["snapshot"] is True and s["diff"] is None
+        assert s["docs"] and s["docs"][0]["path"] == str(rp)
+
+    def test_missing_path_fails(self, cli):
+        with pytest.raises(cli.ScopeError):
+            cli._resolve_scope(_ns(scope="rp", path="no-such-proposal.md"))
+
+    def test_no_references_fails_closed(self, cli, tmp_path):
+        rp = tmp_path / "rp.md"
+        rp.write_text("A prose-only proposal that names no tracked code whatsoever.")
+        with pytest.raises(cli.ScopeError):
+            cli._resolve_scope(_ns(scope="rp", path=str(rp)))
+
+    def test_too_broad_message_names_the_proposal(self, cli):
+        with pytest.raises(cli.ScopeError, match="refactoring proposal references resolved too broadly"):
+            cli._resolve_scope(_ns(scope="rp", path="README.md"))
+
+    def test_e2e_bundle_kind_is_rp(self, cli_path, repo_root, tmp_path):
+        rp = tmp_path / "rp.md"
+        rp.write_text("Refactor `cli/invairiant.py`.")
+        out = tmp_path / "b.json"
+        subprocess.run(["python3", str(cli_path), "collect", "--scope", "rp",
+                        "--path", str(rp), "--out", str(out)],
+                       cwd=repo_root, check=True, capture_output=True)
+        d = json.loads(out.read_text(encoding="utf-8"))
+        assert d["resolved_scope"]["kind"] == "rp" and d["resolved_scope"]["bounded"] is True
+        assert d["resolved_scope"]["has_diff"] is False
+
+
 class TestScopedScanE2E:
     def test_module_bundle_is_bounded(self, cli_path, repo_root, tmp_path):
         out = tmp_path / "b.json"

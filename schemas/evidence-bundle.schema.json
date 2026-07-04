@@ -25,8 +25,8 @@
       "additionalProperties": true,
       "required": ["kind", "bounded", "files_in_scope"],
       "properties": {
-        "kind": { "enum": ["working", "range", "commit", "module", "adr", "repo"] },
-        "target": { "type": ["string", "null"], "description": "The pin: the range, commit sha, module path, or ADR path (null for the working tree)." },
+        "kind": { "enum": ["working", "range", "commit", "module", "adr", "rp", "repo"] },
+        "target": { "type": ["string", "null"], "description": "The pin: the range, commit sha, module path, ADR path, or refactoring-proposal path (null for the working tree)." },
         "bounded": { "type": "boolean" },
         "files_in_scope": { "type": "integer", "minimum": 0 },
         "sample_files": { "type": "array", "items": { "type": "string" }, "description": "A capped preview of the in-scope files (not necessarily the full set)." },
