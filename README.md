@@ -20,7 +20,7 @@ An evidence-based, multi-lens architecture-audit skill (+ CLI) for systems that 
 
 `AI-assisted analysis` · `reusable lenses` · `evidence first` · `gates on S0/S1`
 
-**No evidence. No finding.**
+**1 verified finding beats 20 plausible comments.**
 
 </div>
 
