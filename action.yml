@@ -1,5 +1,5 @@
 name: "invAIriant audit gate"
-description: "Validate an invAIriant audit report against the schemas + protocol rules, render it into the job summary, and fail CI on open S0/S1 findings."
+description: "Validate an invAIriant audit report, render it into the job summary, and fail CI on open S0/S1 findings."
 branding:
   icon: "shield"
   color: "purple"
