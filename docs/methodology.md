@@ -78,6 +78,12 @@ Stage boundaries are load-bearing:
   Unsupported Hypotheses, because a wrong hypothesis recorded is cheaper than
   the same hypothesis re-proposed every audit.
 
+A **lens pass is a discovery pass, not a scoring-only pass**: each lens actively
+*searches* the bounded target for candidate architectural findings. Candidate
+findings become final findings only after adversarial evidence verification
+(stage 2); the 0–10 score is a byproduct of what the search turns up, not the
+goal. In one line: **lenses discover, evidence verifies, severity gates.**
+
 ## 4. Audit types
 
 | Type | Trigger | Scope | Output |

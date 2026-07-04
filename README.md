@@ -82,6 +82,8 @@ one rule that keeps it honest:
 
 ## How it works — the four-stage pipeline
 
+**Lenses discover. Evidence verifies. Severity gates.**
+
 Every audit, from a PR to a full-scale review, runs the same pipeline with
 **hard boundaries between stages** so AI volume becomes signal instead of
 noise. Each stage maps to a prompt in [`prompts/`](prompts/).
@@ -101,6 +103,11 @@ noise. Each stage maps to a prompt in [`prompts/`](prompts/).
   [4] SYNTHESIS               │  rejected hypotheses stay visible
       report synthesizer      ▼  → audit report + verdict (pass / conditions / fail)
 ```
+
+**A lens pass is a discovery pass, not scoring-only:** each lens actively
+*searches* the bounded target for candidate architectural findings; a candidate
+becomes a finding only after adversarial evidence verification. The 0–10 score
+is a byproduct of the search, not its purpose.
 
 - Stage 1 may not assign final severity. Stage 2 may not invent findings.
   Stage 3 touches only verified findings. Stage 4 may not drop a rejected

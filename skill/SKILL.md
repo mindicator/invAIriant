@@ -110,6 +110,11 @@ Stage boundaries are load-bearing: stage 1 never assigns final severity;
 stage 2 never invents findings; stage 3 touches only verified findings;
 stage 4 never drops a rejected hypothesis.
 
+**A lens pass is a discovery pass, not a scoring-only pass:** each lens actively
+searches the bounded target for candidate architectural findings. Candidate
+findings become final findings only after adversarial evidence verification
+(stage 2). The score is a byproduct of what the search turns up — not the goal.
+
 ## Try it (copy-paste)
 
 ```text
