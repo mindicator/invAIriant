@@ -5,8 +5,16 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.2.3] — 2026-07-04
+
 ### Changed
 
+- **README quickstart split into two independent tracks** — *enable the skill*
+  (the product) and *install the CLI helper* (optional infrastructure) — leading
+  with the skill and framing `pip install` as the seatbelt the skill shells out
+  to, not "installing invAIriant". The two install independently.
 - **`pip install` is now production-grade.** The wheel and sdist bundle the
   framework data the CLI reads at runtime (schemas, examples, lens ids) under
   `invairiant_framework/`, and `framework_root()` falls back to it — so a plain
@@ -254,7 +262,8 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/mindicator/invairiant/releases/tag/v0.2.3
 [0.2.2]: https://github.com/mindicator/invairiant/releases/tag/v0.2.2
 [0.2.1]: https://github.com/mindicator/invairiant/releases/tag/v0.2.1
 [0.2.0]: https://github.com/mindicator/invairiant/releases/tag/v0.2.0

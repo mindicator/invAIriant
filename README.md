@@ -5,7 +5,7 @@
 <br/>
 
 [![CI](https://github.com/mindicator/invairiant/actions/workflows/validate.yml/badge.svg)](https://github.com/mindicator/invairiant/actions/workflows/validate.yml)
-[![Release: v0.2.2](https://img.shields.io/badge/release-v0.2.2-blue?style=flat-square)](https://github.com/mindicator/invairiant/releases/latest)
+[![Release: v0.2.3](https://img.shields.io/badge/release-v0.2.3-blue?style=flat-square)](https://github.com/mindicator/invairiant/releases/latest)
 [![Lenses: 28](https://img.shields.io/badge/lenses-28-8A2BE2?style=flat-square)](docs/lens-taxonomy.md)
 [![Packs: 7](https://img.shields.io/badge/packs-7-informational?style=flat-square)](lenses/)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-skill-5A67D8?style=flat-square)](skill/SKILL.md)
@@ -28,18 +28,36 @@ An evidence-based, multi-lens architecture-audit skill (+ CLI) for systems that 
 
 ## Quickstart (60 seconds)
 
+**The skill is the product. The CLI is optional but recommended infrastructure.**
+They install independently — the audit runs with just the skill.
+
+**1 · Enable the `/invairiant` skill in your agent** — *this is the audit.*
+
 ```bash
-pip install -e .                                    # the invairiant CLI
-invairiant collect --out .invairiant/cache/b.json   # 1 · gather evidence (candidate pointers)
-#   2 · in your agent — Claude Code / Codex / Cursor:
-#       /invairiant audit-pr   → runs the lens pipeline, writes report.json
-invairiant render-comment report.json               # 3 · paste-ready PR comment
-invairiant ci-gate report.json                      # 4 · exit 1 on open S0/S1
+# Claude Code — load the skill (once per clone; ~/.claude/skills for personal use)
+mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
 ```
 
-Per-agent skill setup (Claude Code · Codex · Cursor):
-[skill/README.md](skill/README.md). Full worked run with real output:
-[docs/demo.md](docs/demo.md). Gate PRs in CI with the
+Codex: copy [`AGENTS.md`](AGENTS.md) to your repo root · Cursor: copy
+[`.cursor/rules/invairiant.mdc`](.cursor/rules/invairiant.mdc) · per-agent detail:
+[skill/README.md](skill/README.md). Then, in the agent:
+
+```text
+/invairiant audit-pr 123      # runs the lens pipeline → a paste-ready PR comment
+```
+
+**2 · Install the deterministic CLI helper** — *optional.* The seatbelt the
+skill shells out to (collect evidence · validate · render · gate); it never
+runs a lens or produces a finding.
+
+```bash
+pip install -e .                                          # once on PyPI: pip install invairiant
+invairiant collect --scope pr --pr 123 --out .invairiant/cache/b.json
+invairiant render-comment report.json                     # paste-ready PR comment
+invairiant ci-gate report.json                            # exit 1 on open S0/S1
+```
+
+Full worked run: [docs/demo.md](docs/demo.md). Gate PRs in CI with the
 [GitHub Action](docs/github-action.md). No tooling at all? Run the protocol by
 hand from [`examples/`](examples/) + [docs/audit-workflow.md](docs/audit-workflow.md).
 
@@ -259,13 +277,15 @@ way software is written now — with AI in the loop.**
 
 ## Status
 
-**v0.2.2.** The protocol layer — docs, 28 lenses, templates, schemas,
+**v0.2.3.** The protocol layer — docs, 28 lenses, templates, schemas,
 prompts, skill, examples — is usable as-is, and the `invairiant` CLI ships as
 a working reference implementation (scaffold · collect · validate · render ·
 gate · audit memory) with CI dogfooding it. **v0.2 adds bounded audit scopes** —
 PR (by number), commit range, single commit, module, ADR↔code drift, refactoring
 proposal — over the same pipeline, each `collect --scope …` failing closed rather
-than widening, and **still no new lenses**. What's next (PyPI, Marketplace, more case
+than widening, and **still no new lenses**. The CLI is now a self-contained
+`pip install` (the framework it needs rides in the wheel); the remaining
+distribution step is the PyPI upload. What's next (PyPI, Marketplace, more case
 studies) is in [ROADMAP.md](ROADMAP.md). Treat the [schemas](schemas/) as the
 stable contract.
 
