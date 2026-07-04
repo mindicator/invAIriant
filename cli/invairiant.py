@@ -47,6 +47,12 @@ def framework_root() -> Path:
     cand = here.parent.parent
     if _looks_like_root(cand):
         return cand
+    # Installed via pip (outside a checkout): the wheel bundles the framework
+    # data next to the module under invairiant_framework/. This is what makes
+    # `pip install invairiant` work without INVAIRIANT_HOME.
+    bundled = here.parent / "invairiant_framework"
+    if _looks_like_root(bundled):
+        return bundled
     for start in (here.parent, Path.cwd().resolve()):
         for d in (start, *start.parents):
             if _looks_like_root(d):

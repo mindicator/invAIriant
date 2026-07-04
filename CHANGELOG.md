@@ -5,7 +5,34 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **`pip install` is now production-grade.** The wheel and sdist bundle the
+  framework data the CLI reads at runtime (schemas, examples, lens ids) under
+  `invairiant_framework/`, and `framework_root()` falls back to it — so a plain
+  `pip install invairiant` works **outside a checkout**, no `INVAIRIANT_HOME`
+  needed. Before, a non-editable install shipped only the module and any real
+  command died with `schema not found`. The build backend moved to hatchling
+  (`force-include` maps the repo-root dirs into the distribution without moving
+  or duplicating them — the checkout stays the single source of truth). A CI
+  **packaging smoke** installs the wheel in a clean venv and runs a command from
+  outside the checkout, so this can't silently regress.
+
+### Added
+
+- **GitHub Action understands the bounded scopes.** The Action's optional
+  `collect` step gains `scope` / `pr` / `commit` / `path` / `narrow` inputs
+  (`range` kept), so CI can gather a bundle for a PR, module, ADR, or
+  refactoring proposal — not just a range. Inputs pass via env; the step builds
+  only the flags that are set, so it stays a bounded gather.
+
+### Fixed
+
+- **PR scope warns when the head isn't checked out.** `collect --scope pr` now
+  records `head_checked_out` in `resolved_scope` and prints a NOTICE (pointing
+  at `gh pr checkout <N>`, or auditing in CI where the PR head is the checkout)
+  when the PR head is not the working tree — because content-level grep signals
+  are then sparse. The diff, file set, and mass stay correct from git regardless.
 
 ## [0.2.2] — 2026-07-04
 

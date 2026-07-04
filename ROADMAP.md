@@ -15,9 +15,14 @@ judgment, when a project needs it, goes through a custom project lens
 ## v0.3 — hardening & reach (planned)
 
 **Packaging & distribution**
-- Publish the `invairiant` CLI to PyPI (`pip install invairiant`).
+- **Packaging is production-grade** *(done)* — the wheel/sdist bundle the
+  framework the CLI needs, so `pip install invairiant` works outside a checkout
+  (CI packaging smoke guards it). The remaining step is the actual **PyPI
+  upload** (`twine upload` under a project token) — a manual publish, not a code
+  change.
 - Publish the GitHub Action to the Marketplace (the `action.yml` already works
-  via `uses: mindicator/invairiant@<ref>`).
+  via `uses: mindicator/invairiant@<ref>` and now understands the bounded
+  scopes — `scope`/`pr`/`commit`/`path`/`narrow`).
 
 **Evidence base**
 - More worked case studies across project types (SaaS, data platform, infra),

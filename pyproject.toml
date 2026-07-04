@@ -1,18 +1,19 @@
-# Packaging for the invAIriant helper CLI only.
+# Packaging for the invAIriant helper CLI.
 #
 # invAIriant's product is the /invairiant agent skill; this package installs the
 # narrow `invairiant` command (init / validate-config / validate-report /
-# collect-evidence / render-report / ci-gate). It serves the audit; it does not
-# audit. See docs/cli.md.
+# collect / render-report / render-comment / ci-gate / record / history). It
+# serves the audit; it does not audit. See docs/cli.md.
 #
-# Recommended install (from a checkout, so the CLI finds the framework tree):
-#     pip install -e .        # or: pipx install -e .
-# For a non-editable install, set INVAIRIANT_HOME to the framework directory,
-# or run `invairiant` from inside a checkout (root is auto-discovered).
+# The wheel bundles the framework data the CLI reads at runtime (schemas,
+# examples, lens ids) under `invairiant_framework/`, so a plain
+# `pip install invairiant` works OUTSIDE a checkout — no INVAIRIANT_HOME needed.
+# From a checkout the CLI still finds the repo tree first; INVAIRIANT_HOME still
+# overrides both. Editable dev install: `pip install -e .`.
 
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
 
 [project]
 name = "invairiant"
@@ -35,13 +36,35 @@ Documentation = "https://github.com/mindicator/invairiant/blob/main/docs/cli.md"
 [project.scripts]
 invairiant = "invairiant:main"
 
-# The CLI is a single module under cli/; expose it as the top-level module
-# `invairiant` without pulling the docs/lenses/etc. into the distribution.
-[tool.setuptools]
-package-dir = { "" = "cli" }
-py-modules = ["invairiant"]
+# The CLI is a single module (cli/invairiant.py) exposed as top-level
+# `invairiant`; the framework data it needs at runtime rides along under
+# `invairiant_framework/`. force-include maps source paths into the wheel
+# without moving anything in the repo (the repo layout stays the source of
+# truth; editable/checkout runs read it directly).
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+[tool.hatch.build.targets.wheel.force-include]
+"cli/invairiant.py" = "invairiant.py"
+"schemas" = "invairiant_framework/schemas"
+"examples" = "invairiant_framework/examples"
+"lenses" = "invairiant_framework/lenses"
+
+# Source distribution keeps the full tree so it builds identically to a checkout.
+[tool.hatch.build.targets.sdist]
+include = [
+  "/cli",
+  "/schemas",
+  "/examples",
+  "/lenses",
+  "/templates",
+  "/prompts",
+  "/docs",
+  "/README.md",
+  "/LICENSE",
+  "/CHANGELOG.md",
+]
 
 # Unit tests for the CLI live in tests/ and load cli/invairiant.py by path
-# (it is a single script, not an installed package). Run: python -m pytest -q
+# (it is a single script). Run: python -m pytest -q
 [tool.pytest.ini_options]
 testpaths = ["tests"]
