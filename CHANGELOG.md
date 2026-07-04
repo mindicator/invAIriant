@@ -7,6 +7,24 @@ follows Keep a Changelog; versions track the protocol.
 
 _Nothing yet._
 
+## [0.2.4] — 2026-07-04
+
+### Added
+
+- **On PyPI.** [`pip install invairiant`](https://pypi.org/project/invairiant/)
+  is live. Uploads run over **GitHub Trusted Publishing** (OIDC, no stored token)
+  via [`.github/workflows/publish.yml`](.github/workflows/publish.yml), so cutting
+  a release auto-publishes that version. A step-by-step guide (manual `twine` and
+  the automated path) is in [`docs/publishing.md`](docs/publishing.md).
+
+### Changed
+
+- **README and `cli/README.md` lead with `pip install invairiant`** (checkout
+  `-e .` kept as the dev note); the CLI readme — the package's PyPI
+  long_description — now uses absolute GitHub links so they resolve on pypi.org.
+- **`action.yml` description trimmed to <125 chars** so the Action is eligible
+  for the GitHub Marketplace (name/icon/color already passed).
+
 ## [0.2.3] — 2026-07-04
 
 ### Changed
@@ -262,7 +280,8 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/mindicator/invairiant/releases/tag/v0.2.4
 [0.2.3]: https://github.com/mindicator/invairiant/releases/tag/v0.2.3
 [0.2.2]: https://github.com/mindicator/invairiant/releases/tag/v0.2.2
 [0.2.1]: https://github.com/mindicator/invairiant/releases/tag/v0.2.1

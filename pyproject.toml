@@ -17,7 +17,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "invairiant"
-version = "0.2.3"
+version = "0.2.4"
 description = "Helper CLI for the invAIriant agentic audit protocol — it serves the audit, it does not audit."
 readme = "cli/README.md"
 requires-python = ">=3.9"
