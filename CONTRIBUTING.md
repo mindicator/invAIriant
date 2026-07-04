@@ -22,6 +22,22 @@ enforced by the framework's own checks.
   "no evidence, no finding," the anti-averaging rule, or the
   observation/finding separation.
 
+## Releasing
+
+The rule is mechanical, not a thing to remember: **push → wait for CI green on
+that commit → only then tag and release.** It is enforced by a local pre-push
+hook that refuses to push a **tag** whose commit does not have green CI (branch
+pushes pass through — CI runs after them). Install it once per clone:
+
+```bash
+bash scripts/install-hooks.sh      # installs .git/hooks/pre-push
+```
+
+The check itself lives in [`scripts/release-gate.sh`](scripts/release-gate.sh)
+(runnable by hand: `scripts/release-gate.sh v0.2.3`) and fails closed — no `gh`,
+no CI runs yet, or any non-`success` check blocks the release. Last-resort
+override: `git push --no-verify`.
+
 ## Scope of changes
 
 - **New lenses** go in the right pack with a kebab-case id; cross-listed
