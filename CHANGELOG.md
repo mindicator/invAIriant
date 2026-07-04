@@ -7,6 +7,33 @@ follows Keep a Changelog; versions track the protocol.
 
 _Nothing yet._
 
+## [0.2.1] — 2026-07-04
+
+### Added
+
+- **`audit-rp` — refactoring-proposal scope.** A sixth bounded scope kind
+  (`collect --scope rp --path <proposal.md>`) and skill command `audit-rp`. An
+  RP is the mirror image of an ADR: an ADR is a *made* decision (audit for
+  drift — does the code still match?), an RP is a *proposed* change (audit for
+  risk — would applying it break an invariant the code holds now?). It resolves
+  the proposal to the tracked code it references, snapshots that code, and
+  reuses the same fail-closed bounding as `adr` (no refs / too broad → exit 2,
+  `--narrow` to tighten). Documented across the skill, `docs/methodology.md`
+  §4.1 (seven scope kinds; adr = decision drift, rp = invariant risk),
+  `docs/cli.md`, the schema enum, and the cross-agent adapters. **No new
+  lenses**; the CLI still performs no judgment.
+
+### Changed
+
+- **README positioning.** Lead with the one-line promise — *invAIriant keeps
+  architectural invariants from drifting under AI-assisted change* — with the
+  slogan **No evidence. No finding.** as the brand stamp; the
+  "mindicator & silicon bags quartet" credit moves off the very top (it still
+  stands in Contributing and the License). The product row lists the bounded
+  targets, and "What it is not" states the discipline outright: **invAIriant
+  audits bounded engineering scopes, not vibes** — a scope it cannot bound is
+  refused, not widened.
+
 ## [0.2.0] — 2026-07-04
 
 ### Added
@@ -181,7 +208,8 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/mindicator/invairiant/releases/tag/v0.2.1
 [0.2.0]: https://github.com/mindicator/invairiant/releases/tag/v0.2.0
 [0.1.2]: https://github.com/mindicator/invairiant/releases/tag/v0.1.2
 [0.1.1]: https://github.com/mindicator/invairiant/releases/tag/v0.1.1
