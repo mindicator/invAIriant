@@ -7,6 +7,17 @@ follows Keep a Changelog; versions track the protocol.
 
 _Nothing yet._
 
+## [0.2.5] — 2026-07-04
+
+### Added
+
+- **Colored, TTY-aware CLI output.** `validate-config` / `validate-report`,
+  `collect`, and `ci-gate` now use semantic color on a real terminal — green for
+  `✓`/`OK`/pass, red for `✗`/`FAILED`/fail and S0, amber for `⚠` and S1, dim for
+  asides. Color is emitted **only** when stdout is a terminal, honoring
+  `NO_COLOR` and `TERM=dumb`; piped and CI output stay byte-for-byte plain, so
+  exit codes, rendered markdown, and anything parsed downstream are unaffected.
+
 ## [0.2.4] — 2026-07-04
 
 ### Added
@@ -280,7 +291,8 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/mindicator/invairiant/releases/tag/v0.2.5
 [0.2.4]: https://github.com/mindicator/invairiant/releases/tag/v0.2.4
 [0.2.3]: https://github.com/mindicator/invairiant/releases/tag/v0.2.3
 [0.2.2]: https://github.com/mindicator/invairiant/releases/tag/v0.2.2

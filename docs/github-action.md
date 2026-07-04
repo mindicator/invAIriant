@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mindicator/invairiant@v0.2.4
+      - uses: mindicator/invairiant@v0.2.5
         with:
           report: docs/audits/latest.json   # the report your /invairiant audit wrote
           max-severity: S1                   # S1 (default) blocks S0+S1; S0 blocks only S0
@@ -39,13 +39,13 @@ the gate.
 | `pr` | — | PR number for `--scope pr` (needs a GitHub remote + `gh`/token or the pull ref; check the PR out for full signal fidelity) |
 | `path` | — | dir/file for `--scope module`, or the ADR / proposal file for `--scope adr` / `rp` |
 | `narrow` | — | restrict an `adr`/`rp` scope's code to this subtree |
-| `invairiant-ref` | `v0.2.4` | framework ref to run (tag / branch / sha) |
+| `invairiant-ref` | `v0.2.5` | framework ref to run (tag / branch / sha) |
 
 The `collect` step passes only the scope flags you set, so it stays a **bounded**
 gather. Example — bundle a PR by number for an agent step:
 
 ```yaml
-- uses: mindicator/invairiant@v0.2.4
+- uses: mindicator/invairiant@v0.2.5
   with:
     collect: true
     scope: pr
