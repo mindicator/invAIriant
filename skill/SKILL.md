@@ -3,13 +3,14 @@ name: invairiant
 description: >
   invAIriant — an evidence-based, multi-lens architecture-audit protocol for
   LLM coding agents. This skill IS the product: it runs the audit. Commands:
-  audit-pr, full-audit, verify-findings, classify-severity, synthesize-report,
-  closure-verification.
+  audit-pr, audit-range, audit-commit, audit-module, audit-adr, full-audit,
+  verify-findings, classify-severity, synthesize-report, closure-verification.
   Use when the user asks for an architecture / invariant / lens audit, an
-  evidence-based review, a PR audit, a phase-transition or post-incident audit,
-  to verify candidate findings, classify severity, or synthesize an audit
-  report — or when they type `/invairiant ...`. Every finding must cite
-  concrete evidence: no evidence, no finding.
+  evidence-based review, a PR audit, an audit of a commit range, a single
+  commit, a module/directory, or ADR↔code drift, a phase-transition or
+  post-incident audit, to verify candidate findings, classify severity, or
+  synthesize an audit report — or when they type `/invairiant ...`. Every
+  finding must cite concrete evidence: no evidence, no finding.
 ---
 
 # invAIriant — evidence-based multi-lens architecture audit
@@ -29,6 +30,38 @@ Separate observation from verified finding.
 Do not produce confident claims from vibes.
 ```
 
+## The audit target
+
+Every invAIriant audit resolves to one **audit target**:
+
+```text
+audit target = pinned scope + evidence bundle + selected lenses + report type
+```
+
+The scope-selecting commands below differ **only in the first term** — how the
+scope is pinned. The bundle shape, the four-stage pipeline, the evidence
+discipline, and the report structure are identical across all of them.
+invAIriant audits **bounded engineering scopes**; it does not perform
+open-ended repository search or brainstorming.
+
+| Scope kind | Pinned by | `collect` invocation | Natural report type |
+|---|---|---|---|
+| PR / diff | a PR number or range | `--scope range --range A..B` (or working tree) | PR audit |
+| commit range | `A..B` | `--scope range --range A..B` | tactical (drift) |
+| single commit | a sha | `--scope commit --commit <sha>` | focused / post-hoc |
+| module | a dir/file path | `--scope module --path <path>` | focused audit |
+| ADR ↔ code | an ADR file | `--scope adr --path <adr.md>` | doc-drift / event |
+| whole repo | (opt-in) | `--scope repo` | full-scale |
+
+`collect` **fails closed**: any scope it cannot bound — a missing range, an
+unknown path/sha, an ADR with no resolvable references or one resolving too
+broadly — exits non-zero rather than silently widening to the whole repo.
+`repo` is the one deliberately unbounded scope. Every bundle carries a
+`resolved_scope` block naming the boundary, so what was and was not audited is
+explicit. The scope kind is orthogonal to the audit *type* in
+[methodology.md](../docs/methodology.md) §4 — a range can drive a tactical
+audit, an ADR an event-triggered one.
+
 ## Commands
 
 Parse the first token of the invocation as the command. Default (no token) →
@@ -37,6 +70,10 @@ Parse the first token of the invocation as the command. Default (no token) →
 | Command | Does | Pipeline stages |
 |---|---|---|
 | `audit-pr [<pr#\|range>] [--lenses a,b]` | Audit a PR/diff: checklist + ≤2 focused lenses | 1→2→3→4, PR-comment output |
+| `audit-range <A..B> [--lenses ...]` | Audit a commit range (drift since a point) | 1→2→3→4, report |
+| `audit-commit <sha> [--lenses ...]` | Audit a single commit | 1→2→3→4, report |
+| `audit-module <path> [--lenses ...]` | Audit a directory/file subtree | 1→2→3→4, report |
+| `audit-adr <adr.md> [--narrow P] [--lenses ...]` | Audit ADR ↔ code drift | 1→2→3→4, doc-drift report |
 | `full-audit [<range>] [--lenses ...]` | Full-scale audit: all mandatory lenses | 1→2→3→4, full report |
 | `verify-findings <candidates>` | Adversarially verify candidate findings only | stage 2 |
 | `classify-severity <verified>` | Map verified findings to severity only | stage 3 |
@@ -65,6 +102,10 @@ stage 4 never drops a rejected hypothesis.
 /invairiant audit-pr                              # audit the current diff/PR
 /invairiant audit-pr --lenses security-threat,turing
 /invairiant audit-pr HEAD~1..HEAD                 # a specific range
+/invairiant audit-range origin/main..HEAD         # drift across a range
+/invairiant audit-commit 9f3c1ac                  # one commit
+/invairiant audit-module cli/                      # a module subtree
+/invairiant audit-adr docs/adr/0012.md            # ADR ↔ code drift
 /invairiant full-audit                            # whole repo, mandatory lenses
 /invairiant verify-findings <candidate findings>  # stage 2 only
 /invairiant closure-verification                  # after a fix wave
@@ -89,18 +130,24 @@ found, run **degraded mode** (below) rather than inventing lens content.
    `invairiant init --type <inferred>` (or write one after confirming project
    type, canonical docs, risk assets, and 4–6 mandatory lenses via
    `docs/lens-taxonomy.md`). Validate it: `invairiant validate-config`.
-2. **Scope.** Pin the commit/range; state what is in and out of scope.
+2. **Scope.** Pin the audit target (the scope kind + its pin — see
+   [The audit target](#the-audit-target)). `collect` resolves it to a bounded
+   file set and **fails closed** if it cannot; state what is in and out of
+   scope.
 3. **Lens selection.** Mandatory lenses from config, plus at most the packs the
    change/risk surface justifies. Anti-overengineering is canon: a small PR
    gets the checklist + ≤2 lenses; default full audits use 4–6, not 20.
-4. **Evidence gathering.** Run `invairiant collect --range <range> --out
-   .invairiant/cache/bundle.json` to build the deterministic evidence bundle
-   (diff, tree, language stats, grep signals, import hints, generated mass,
-   known-rejected). Hand it to the lens passes as input. Everything in it is a
-   **candidate pointer, never a finding** — it still passes stage 2. The raw
-   bundle stays gitignored. Its `known_rejected` lists hypotheses ruled out in
-   past audits (from committed memory) — **do not re-propose them** without new
-   evidence.
+4. **Evidence gathering.** Run `invairiant collect --scope <kind> [target]
+   --out .invairiant/cache/bundle.json` — the scope matches the command (see
+   [The audit target](#the-audit-target)) — to build the deterministic evidence
+   bundle (diff/snapshot, tree, language stats, grep signals, import hints,
+   generated mass, known-rejected), all computed over the **resolved scope
+   only**. Hand it to the lens passes as input. Everything in it is a
+   **candidate pointer, never a finding** — it still passes stage 2. Read the
+   bundle's `resolved_scope` and audit **only inside it**; do not wander outside
+   the boundary. The raw bundle stays gitignored. Its `known_rejected` lists
+   hypotheses ruled out in past audits (from committed memory) — **do not
+   re-propose them** without new evidence.
 
 ## Command procedures
 
@@ -121,6 +168,34 @@ Scope = the diff + its blast radius. Runbook:
    separate. Paste it into the PR (the CLI does not post).
 
 Do not merge/approve anything — present the gate.
+
+### `audit-range` · `audit-commit` · `audit-module` · `audit-adr`
+Same runbook as `audit-pr` — shared setup, collect, pipeline 1→2→3→4,
+deliverable — differing **only** in how scope is pinned at collect time and the
+natural report type. Do not re-derive the pipeline; reuse it.
+
+1. **Collect with the matching scope** (see [The audit target](#the-audit-target)):
+   - `audit-range <A..B>` → `collect --scope range --range <A..B>`
+   - `audit-commit <sha>` → `collect --scope commit --commit <sha>`
+   - `audit-module <path>` → `collect --scope module --path <path>`
+   - `audit-adr <adr.md>` → `collect --scope adr --path <adr.md> [--narrow <p>]`
+
+   If `collect` exits non-zero (scope could not be bounded), **stop and report
+   that** — narrow the scope (`--narrow`, a tighter path, an explicit range).
+   Never fall back to auditing the whole repo; that is `full-audit`, chosen
+   deliberately.
+2. **Audit only inside `resolved_scope`.** The bundle's tree, signals, and mass
+   are already restricted to the resolved file set — treat that set as the
+   world for this audit.
+3. **Lens selection** by the resolved surface: a range/commit → the diff's risk
+   surface (as `audit-pr`); a module → the ≤4 lenses its responsibility invites;
+   an ADR → the lenses the decision is *about* (a transport ADR →
+   `security-threat` + the relevant systems lens), plus the doc/code-drift
+   check — the ADR text rides along in the bundle as a canonical doc, so
+   contradictions between the decision and the code are first-class evidence.
+4. **Pipeline** 1→2→3→4, then the deliverable: for a range/commit/module,
+   `invairiant render-report` (or `render-comment` for a review-style handoff);
+   for an ADR, a doc-drift report whose findings cite ADR §↔code contradictions.
 
 ### `full-audit`
 Scope = whole system at a pinned commit. Assign roles

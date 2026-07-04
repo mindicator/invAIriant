@@ -78,18 +78,41 @@ protocol rules a schema cannot express:
 **rendered markdown** report (H1, sections, verdict, kept hypotheses present) —
 JSON stays the source of truth. Exit 0 = valid, 1 = problems.
 
-### `invairiant collect [--range A..B] [--out F] [--run-adapters] [--cap N]`
+### `invairiant collect [--scope KIND] [--range A..B] [--commit SHA] [--path P] [--narrow P] [--out F] [--run-adapters] [--cap N]`
 Gather a deterministic **evidence bundle** for the skill — the CLI's core
 helper. One JSON object
 ([`schemas/evidence-bundle.schema.json`](../schemas/evidence-bundle.schema.json),
-`invairiant.evidence-bundle/v1`) with: change `scope` (diff), `repo_tree`,
-`language_stats`, `tests_ci` (git status; adapters if `--run-adapters`),
-`config` + `canonical_docs` excerpts, `signals` (grep pointers for model
-calls / shell / SQL / secrets / TODO), `import_boundaries`, `generated_mass`,
-and `known_rejected` (from committed audit memory). Uses `rg` when present,
-else a **bounded** single-pass fallback over `git ls-files` that skips large
-(>512 KB) and binary files and caps the file count — the bundle's `limits`
-block reports the bounds and whether the scan truncated (no silent caps).
+`invairiant.evidence-bundle/v1`) with: change `scope` (diff or snapshot),
+`repo_tree`, `language_stats`, `tests_ci` (git status; adapters if
+`--run-adapters`), `config` + `canonical_docs` excerpts, `signals` (grep
+pointers for model calls / shell / SQL / secrets / TODO), `import_boundaries`,
+`generated_mass`, and `known_rejected` (from committed audit memory). Uses `rg`
+when present, else a **bounded** single-pass fallback over `git ls-files` that
+skips large (>512 KB) and binary files and caps the file count — the bundle's
+`limits` block reports the bounds and whether the scan truncated (no silent
+caps).
+
+**`--scope` pins the audit target.** Every field above is computed over the
+resolved scope's file set *only* — this is what keeps `collect` a scoped
+evidence-gatherer, not a whole-repo scanner:
+
+| `--scope` | Needs | Resolves to |
+|---|---|---|
+| `working` (default) | — | uncommitted working-tree changes |
+| `range` | `--range A..B` | files changed in the range (diff) |
+| `commit` | `--commit SHA` | files touched by one commit (diff) |
+| `module` | `--path DIR\|FILE` | a snapshot of that subtree (no diff) |
+| `adr` | `--path ADR.md` | the ADR text + the tracked paths/symbols it references; `--narrow P` restricts to a subpath |
+| `repo` | — | the whole repo, **explicitly unbounded** (full-audit) |
+
+`collect` **fails closed** (exit 2, `scope could not be bounded`) when a scope
+cannot be pinned — a missing `--range`, an unknown path or sha, or an ADR whose
+references don't resolve or resolve too broadly (past a safety cap, unless
+`--narrow` tightens them). It never silently widens to the whole repo; `repo`
+is the one deliberately unbounded scope. `--range A..B` with no `--scope` is a
+shorthand for `--scope range`. Every bundle carries a **`resolved_scope`** block
+(`kind`, `target`, `bounded`, `files_in_scope`, `sample_files`, `has_diff`) so
+the boundary is explicit and auditable.
 
 **Everything in the bundle is a candidate pointer, not a finding** — it is
 input for the `/invairiant` skill, which applies lenses; only verified,

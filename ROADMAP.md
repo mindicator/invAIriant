@@ -13,6 +13,16 @@ core packs.
 
 ## v0.2 — hardening & reach
 
+**Scope beyond PRs** *(landed)*
+- `invairiant collect --scope {working,range,commit,module,adr,repo}` — the
+  **audit target** (pinned scope + evidence bundle + selected lenses + report
+  type) generalized past PR diffs. One resolver turns a scope pin into a bounded
+  file set; the whole bundle is computed over that set only. Fails closed when a
+  scope can't be bounded, records the boundary in a `resolved_scope` block.
+- Skill commands `audit-range`, `audit-commit`, `audit-module`, `audit-adr` —
+  thin scope-selectors over the **same** four-stage pipeline. Still **no new
+  lenses**: a wider set of things to point the audit at, not new judgment.
+
 **Packaging & distribution**
 - Publish the `invairiant` CLI to PyPI (`pip install invairiant`).
 - Publish the GitHub Action to the Marketplace (the `action.yml` already works

@@ -5,7 +5,40 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Scope resolvers — the audit target beyond PRs.** `invairiant collect` now
+  takes `--scope {working,range,commit,module,adr,repo}` and resolves the pin to
+  a **bounded file set**; the entire evidence bundle (tree, language stats, grep
+  signals, generated mass) is computed over that set only — scoped gathering, not
+  a whole-repo scan. It **fails closed** (exit 2) when a scope can't be bounded —
+  a missing `--range`, an unknown `--path`/`--commit`, or an ADR whose references
+  don't resolve or resolve too broadly (unless `--narrow` tightens them) — and
+  never silently widens; `repo` is the one opt-in unbounded scope. Every bundle
+  now carries a **`resolved_scope`** block (documented in the evidence-bundle
+  schema) making the boundary explicit and auditable.
+- **`adr` scope** — `collect --scope adr --path <ADR.md>` pins an
+  **ADR ↔ code** audit: the ADR text joins the canonical docs and its referenced
+  paths/symbols resolve to the tracked files in scope, so decision-vs-code drift
+  is first-class evidence.
+- **Skill commands `audit-range`, `audit-commit`, `audit-module`, `audit-adr`**
+  ([`skill/SKILL.md`](skill/SKILL.md)) — thin scope-selectors over the **same**
+  four-stage pipeline, plus the unifying **audit target** concept
+  (`pinned scope + evidence bundle + selected lenses + report type`) in the skill
+  and [`docs/methodology.md`](docs/methodology.md) §4.1. **No new lenses** — a
+  wider set of things to point the audit at, not new judgment. Cross-agent
+  adapters (`AGENTS.md`, Cursor rule) updated to match.
+- **14 scope tests** (`tests/test_scope.py`): per-kind resolution, fail-closed
+  exit-2 cases, the `resolved_scope` shape, ADR reference/identifier resolution
+  with `--narrow`, and an end-to-end proof that a module scan stays inside its
+  subtree. 69 tests total.
+
+### Non-goal reaffirmed
+
+- invAIriant audits **bounded engineering scopes** — PRs, ranges, commits,
+  modules, ADR↔code drift, the repo by explicit choice. It does **not** perform
+  general repository search or brainstorming; an unbounded scope is refused, not
+  widened ([`docs/methodology.md`](docs/methodology.md) §7).
 
 ## [0.1.2] — 2026-07-04
 

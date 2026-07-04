@@ -51,7 +51,10 @@ runbook.
 canonical docs.
 
 1. Diff the period: `git log --stat` over the window; list changes that were
-   significant in aggregate even if each PR was small.
+   significant in aggregate even if each PR was small. Pin the window as the
+   audit target with `invairiant collect --scope range --range <since>..HEAD`
+   (or `/invairiant audit-range <since>..HEAD`) so the bundle covers exactly
+   that range.
 2. Hunt **drift**: code vs canonical docs; temporary workarounds that
    survived their trigger-to-remove; boundaries that widened.
 3. Check **action items** from prior audits: closed, stale, or quietly
@@ -144,7 +147,11 @@ Two special modes inherited from the origin canon, generalized:
   `/invairiant audit-pr` and `/invairiant full-audit` orchestrate this whole
   workflow — config discovery → lens selection → staged pipeline → report —
   and `verify-findings` / `classify-severity` / `synthesize-report` run
-  individual stages. Humans approve gates.
+  individual stages. The scope-selecting commands `audit-range <A..B>`,
+  `audit-commit <sha>`, `audit-module <path>`, and `audit-adr <adr.md>` run the
+  **same pipeline** on a different pinned scope (methodology §4.1) — each is a
+  thin wrapper over `invairiant collect --scope …`, which **fails closed** if
+  the scope can't be bounded. Humans approve gates.
 - **The CLI is infrastructure, not judgment.** The agent may shell out to
   `invairiant validate-config`, `collect`, `validate-report`, `render-report`,
   `render-comment`, `ci-gate`, and `record` ([cli.md](cli.md)) — but the CLI

@@ -94,6 +94,30 @@ about users, state ownership or the source of truth, automation authority or
 oracle boundaries, degradation/recovery behavior, or compatibility with
 deployed instances.
 
+### 4.1 Scope and the audit target
+
+Audit *type* (above) is **orthogonal** to audit *scope* — the slice of the
+codebase pinned for a run. Every audit resolves to one **audit target**:
+
+```text
+audit target = pinned scope + evidence bundle + selected lenses + report type
+```
+
+invAIriant pins six scope kinds: the working tree, a commit range, a single
+commit, a **module** (a directory/file subtree), an **ADR ↔ code** pair, or —
+opt-in — the whole repo. `invairiant collect --scope <kind>` resolves the pin
+to a **bounded file set** and computes the entire evidence bundle (tree,
+language stats, grep signals, generated mass) over that set *only*. It **fails
+closed**: a scope it cannot bound — a missing range, an unknown path/sha, an
+ADR whose references don't resolve or resolve too broadly — is refused, never
+silently widened to the whole repo. Every bundle records the boundary in a
+`resolved_scope` block, so what was and was not audited is explicit.
+
+The two axes compose freely: a range can drive a *tactical* audit, an ADR an
+*event-triggered* one, a module a *focused* full-scale pass. Neither axis
+changes the four-stage pipeline or the evidence discipline — only what is in
+front of them.
+
 ## 5. Roles
 
 A full-scale audit distributes these roles; one person or agent may hold
@@ -131,7 +155,14 @@ everyone.
 
 ## 7. Non-goals
 
-invAIriant is **not**:
+invAIriant audits **bounded engineering scopes** — PRs, commit ranges,
+ADR ↔ code drift, modules, release gates, incidents. It does **not** perform
+general repository search or open-ended brainstorming: a scope that cannot be
+bounded is refused (`collect` fails closed), not widened to "look at
+everything". The whole-repo scope exists, but it is a deliberate `full-audit`
+choice, never a fallback.
+
+invAIriant is also **not**:
 
 - a security certification;
 - a replacement for human review;
