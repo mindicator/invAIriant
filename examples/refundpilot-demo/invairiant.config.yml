@@ -1,0 +1,47 @@
+# invAIriant config — refundpilot (demo)
+project:
+  name: refundpilot
+  type: ai-agent-system
+  description: >
+    LLM agent that adjudicates customer refund requests and issues the payout
+    autonomously against the payments provider.
+
+canonical_docs:
+  - docs/adr/0007-refund-caps.md
+
+mandatory_lenses:
+  - oracle-boundary
+  - security-threat
+  - turing
+  - leveson
+
+optional_lens_packs:
+  - ai-generated-code
+
+critical_lenses:
+  - oracle-boundary
+  - security-threat
+
+risk_assets:
+  - customer money (refund payouts)
+  - automation authority
+
+evidence:
+  require_file_or_diff_reference: true
+  allow_observations_without_evidence: true
+  allow_findings_without_evidence: false
+
+severity_policy:
+  low_score_threshold: 6.0
+  critical_domain_threshold: 5.0
+  id_prefix: RFP
+
+named_categories:
+  - id: AUTO_REFUND_OVERREACH
+    default_severity: S1
+    description: >
+      The agent can move customer money without a deterministic cap or human
+      approval on the executing path.
+
+audit:
+  report_dir: docs/audits

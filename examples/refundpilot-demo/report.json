@@ -1,0 +1,60 @@
+{
+  "title": "refundpilot (ADR-0007 ↔ code)",
+  "date": "2026-07-04",
+  "audit_type": "event-triggered",
+  "project": {
+    "name": "refundpilot",
+    "type": "ai-agent-system"
+  },
+  "scope": "handle_refund in refund_agent.py against ADR-0007 (refund auto-approval cap). Pinned with `invairiant collect --scope adr --path docs/adr/0007-refund-caps.md`; in scope = the code the ADR references (refund_agent.py, payments.py).",
+  "inputs_reviewed": [
+    "docs/adr/0007-refund-caps.md",
+    "refund_agent.py, payments.py, llm.py",
+    "evidence bundle (invairiant collect --scope adr)"
+  ],
+  "config_ref": "invairiant.config.yml",
+  "lens_scores": [
+    { "pack": "ai-generated-code", "lens": "oracle-boundary", "score": 2.5, "verdict": "the cap the ADR calls the enforced boundary is observed but never enforced (RFP-001)", "evidence_refs": ["RFP-001"] },
+    { "pack": "security-safety", "lens": "security-threat", "score": 4, "verdict": "untrusted model output reaches issue_payout unbounded; no server-side cap behind it (RFP-001)", "evidence_refs": ["RFP-001"] },
+    { "pack": "core", "lens": "turing", "score": 7, "verdict": "control flow terminates and is simple; the defect is a missing gate, not a loop" },
+    { "pack": "security-safety", "lens": "leveson", "score": 4.5, "verdict": "the safety control exists on paper (a warning log) but does not stop the unsafe action (RFP-001)", "evidence_refs": ["RFP-001"] }
+  ],
+  "findings": [
+    {
+      "id": "RFP-001",
+      "severity": "S1",
+      "lens": "oracle-boundary",
+      "category": "AUTO_REFUND_OVERREACH",
+      "claim": "The $50 auto-refund cap is checked but not enforced: handle_refund logs a warning when the model's amount exceeds MAX_AUTO_REFUND_USD, then issues the payout unconditionally. The agent can autonomously pay out any amount the model returns — the exact boundary ADR-0007 says must gate the executing path.",
+      "evidence": [
+        { "type": "file_lines", "file": "refund_agent.py", "lines": "29-30", "description": "`if rec[\"amount\"] > MAX_AUTO_REFUND_USD: log.warning(...)` — the over-cap branch only logs; no return, no human-routing" },
+        { "type": "file_lines", "file": "refund_agent.py", "lines": "33", "description": "`issue_payout(order.customer_id, rec[\"amount\"])` executes on the next line for any amount — the cap does not gate it" },
+        { "type": "file_lines", "file": "payments.py", "lines": "10-11", "description": "\"There is NO server-side cap — the caller is trusted\": handle_refund is the only enforcement point, as ADR-0007 states" },
+        { "type": "doc_code_contradiction", "doc": "docs/adr/0007-refund-caps.md", "code": "refund_agent.py:29-33", "description": "ADR-0007: \"above the cap MUST be routed to a human — the agent must not issue it autonomously.\" The code warns and issues it." }
+      ],
+      "risk": "A prompt injection in order data, or an ordinary model hallucination, yields an arbitrary `amount` that is paid out with no cap and no human — direct, unbounded loss of customer funds. The warning log makes it look handled in review and in dashboards.",
+      "recommendation": "Gate issue_payout on the cap: for amount > MAX_AUTO_REFUND_USD, route to human review and return — do not call issue_payout. Add a test that a $5000 model-approved refund does NOT pay out. Treat the model `amount` as advisory, the cap as the enforced bound.",
+      "confidence": "high",
+      "status": "verified",
+      "source": "hybrid",
+      "affected_components": ["refund_agent", "payments"],
+      "verification": { "verified_by": "evidence-verifier", "method": "read refund_agent.py:24-33 control flow — confirmed no return/raise between the cap warning (29-30) and issue_payout (33); confirmed payments.py has no cap; cross-read ADR-0007", "notes": "the branch on the cap is a warning, not a gate" }
+    }
+  ],
+  "observations": [
+    { "text": "llm.py returns the model's JSON parsed and trusted as-is; the whole design treats an advisory, injectable input as authority on the money-moving path.", "lens": "oracle-boundary" }
+  ],
+  "hypotheses": [
+    { "text": "Prompt injection via order data could exfiltrate customer PII into the model prompt.", "lens": "security-threat", "rejected_reason": "the prompt at refund_agent.py:20-22 interpolates only order.id and order.total — no customer PII or free-text notes are read into it. No evidence, so not a finding." }
+  ],
+  "summary": {
+    "verdict": "fail",
+    "executive_summary": "One S1 fails the gate: refundpilot's refund agent does not enforce the $50 auto-approval cap that ADR-0007 calls a hard boundary — it warns over-cap refunds and pays them out anyway (RFP-001). Control flow is otherwise simple and terminating; the defect is a missing gate, not complexity. A normal review sees a cap check and a warning and passes it; the oracle-boundary lens verified the check does not gate the action.",
+    "strongest_lens": "turing",
+    "weakest_lens": "oracle-boundary",
+    "weakest_reason": "the ADR's enforced boundary is not enforced — exactly what this lens exists to catch (RFP-001)",
+    "required_actions": [
+      { "action": "Gate issue_payout on MAX_AUTO_REFUND_USD; route over-cap refunds to a human and return; add a 'model-approved $5000 refund does not pay out' test", "finding_ids": ["RFP-001"], "owner": "agent team", "deadline": "2026-07-08", "blocking": true }
+    ]
+  }
+}

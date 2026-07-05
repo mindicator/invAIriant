@@ -1,10 +1,37 @@
 # Demo
 
-One full pass through the pipeline, then a few imaginary scenarios. Everything
-in the first walkthrough is **real CLI output** except the `/invairiant
-audit-pr` step, which the agent runs.
+## Run it yourself — `refundpilot`
 
-## The full flow — `collect → audit-pr → report → render-comment → record`
+A real, runnable audit that catches a real bug a normal review misses. Source:
+[`examples/refundpilot-demo/`](../examples/refundpilot-demo/).
+
+![invAIriant catching an unbounded-refund bug — a real recording of the live CLI](../assets/invairiant-demo.gif)
+
+> **Real CLI seatbelt run.** The audit report was produced by `/invairiant
+> audit-adr`; the CLI validates, renders, and gates it.
+
+**The bug.** `refundpilot` is an autonomous refund agent. Its $50 auto-approval
+cap is *checked* — `if amount > MAX_AUTO_REFUND_USD: log.warning(...)` — but the
+next line issues the payout anyway. The cap is **logged, not enforced.** A normal
+review sees the check and passes it.
+
+**The catch.** invAIriant reads `ADR-0007` (which calls that cap the *enforced*
+boundary), traces the executing path, and files it as an **S1 with cited lines**
+(`refund_agent.py:29-33`). `ci-gate` exits 1 — the merge is blocked.
+
+```bash
+pip install invairiant
+cd examples/refundpilot-demo
+./run-demo.sh                # collect → validate-report → ci-gate (real output)
+```
+
+`report.json` is the agent's audit output (`/invairiant audit-adr`), shipped in
+the folder; `run-demo.sh` shows the deterministic CLI seatbelt around it —
+**lenses discover, evidence verifies, severity gates.**
+
+---
+
+## A second worked flow — `collect → audit-pr → report → render-comment → record`
 
 Setting: a PR changes a shell TLS renderer. This is the
 [`persistent-mesh-transport`](../case-studies/persistent-mesh-transport/)

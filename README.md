@@ -163,6 +163,18 @@ it consumes.
 
 ## See it catch what a reviewer misses
 
+A **real recording of the live CLI** — an autonomous refund agent whose $50 cap
+is *checked but never enforced*, caught as an S1 and blocked. Run it:
+[`examples/refundpilot-demo/`](examples/refundpilot-demo/) · walkthrough:
+[docs/demo.md](docs/demo.md).
+
+<div align="center">
+<img src="assets/invairiant-demo.gif" alt="Real terminal recording: invairiant collect --scope adr, then validate-report (green OK), then ci-gate — FAILED, RFP-001 [S1], exit 1 blocking the merge" width="94%">
+</div>
+
+The audit report is the agent's (`/invairiant audit-adr`); the CLI validates,
+renders, and gates it. And the paste-ready PR comment it produces:
+
 <div align="center">
 <img src="assets/pr-comment.svg" alt="Example invAIriant PR-audit comment: verdict pass_with_conditions, an S1 finding PMT-001 with evidence and fix, a kept rejected hypothesis, and ci-gate exiting 1 to block the merge" width="88%">
 </div>
