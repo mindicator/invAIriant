@@ -5,310 +5,65 @@
 <br/>
 
 [![CI](https://github.com/mindicator/invairiant/actions/workflows/validate.yml/badge.svg)](https://github.com/mindicator/invairiant/actions/workflows/validate.yml)
-[![Release: v0.2.5](https://img.shields.io/badge/release-v0.2.5-blue?style=flat-square)](https://github.com/mindicator/invairiant/releases/latest)
-[![Lenses: 28](https://img.shields.io/badge/lenses-28-8A2BE2?style=flat-square)](docs/lens-taxonomy.md)
-[![Packs: 7](https://img.shields.io/badge/packs-7-informational?style=flat-square)](lenses/)
-[![Claude Code](https://img.shields.io/badge/Claude_Code-skill-5A67D8?style=flat-square)](skill/SKILL.md)
-[![Codex](https://img.shields.io/badge/Codex-AGENTS.md-black?style=flat-square)](AGENTS.md)
-[![Cursor](https://img.shields.io/badge/Cursor-rule-2B2B2B?style=flat-square)](.cursor/rules/invairiant.mdc)
-[![Evidence first](https://img.shields.io/badge/evidence-first-brightgreen?style=flat-square)](docs/evidence-rules.md)
-[![No evidence, no finding](https://img.shields.io/badge/no%20evidence-no%20finding-critical?style=flat-square)](docs/evidence-rules.md)
+[![pip](https://img.shields.io/pypi/v/invairiant?style=flat-square&label=pip%20install)](https://pypi.org/project/invairiant/)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-informational?style=flat-square)](LICENSE)
 
 **invAIriant keeps architectural invariants from drifting under AI-assisted change.**
 
-An evidence-based, multi-lens architecture-audit skill (+ CLI) for systems that must not drift.
+Your coding agent runs the audit and gates the merge on real findings. Claude Code · Codex · Cursor.
 
-`AI-assisted analysis` · `reusable lenses` · `evidence first` · `gates on S0/S1`
-
-**1 verified finding beats 20 plausible comments.**
+**No evidence. No finding.**
 
 </div>
+
+<div align="center">
+<img src="assets/invairiant-demo.gif" alt="Real terminal recording: invairiant collect, then validate-report (OK), then ci-gate — FAILED, RFP-001 [S1], exit 1 blocking the merge" width="94%">
+</div>
+
+An LLM can propose anything; only cited, verified findings count. invAIriant runs a
+named set of review lenses over a bounded change, then makes every candidate survive
+adversarial evidence checks before it becomes a finding. Lenses discover, evidence
+verifies, severity gates. A high average score never cancels a critical finding.
+
+## Start
+
+**1. Add the skill to your agent** — this is the audit:
+
+```bash
+mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
+# Codex / Cursor: see skill/README.md
+```
+
+**2. Run it** in the agent: `/invairiant audit-pr` → a paste-ready PR comment.
+
+**3. Gate CI** (optional — the deterministic CLI seatbelt):
+
+```bash
+pip install invairiant
+invairiant ci-gate report.json      # exits 1 on an open S0/S1 finding
+```
+
+## See it catch what a reviewer missed
+
+[**low-latency-runtime**](case-studies/low-latency-runtime/): average lens score ~7,
+verdict *pass* — yet one lens files a real correctness finding the reviewer never saw.
+Five more worked audits in [case-studies/](case-studies/), and a runnable demo in
+[examples/refundpilot-demo/](examples/refundpilot-demo/).
+
+## Learn more
+
+- **How it works** — the pipeline and the evidence rules: [docs/methodology.md](docs/methodology.md)
+- **The skill** — every command and scope: [skill/SKILL.md](skill/SKILL.md)
+- **Lenses** — 28 across 7 packs, pick 4–6 by risk: [docs/lens-taxonomy.md](docs/lens-taxonomy.md)
+- **The CLI**: [docs/cli.md](docs/cli.md) · **Gate PRs in CI**: [docs/github-action.md](docs/github-action.md)
+- **Walkthrough** — a full run with real output: [docs/demo.md](docs/demo.md)
+
+## Not this
+
+Not a linter, scanner, or proof of correctness; it turns their output into evidence and
+gates on verified findings. Not "AI, wander the repo and tell me what you think": it
+audits a bounded scope (a PR, a range, a module, an ADR) and refuses one it can't bound.
 
 ---
 
-## Quickstart (60 seconds)
-
-**The skill is the product. The CLI is optional but recommended infrastructure.**
-They install independently — the audit runs with just the skill.
-
-**1 · Enable the `/invairiant` skill in your agent** — *this is the audit.*
-
-```bash
-# Claude Code — load the skill (once per clone; ~/.claude/skills for personal use)
-mkdir -p .claude/skills && ln -s "$PWD/skill" .claude/skills/invairiant
-```
-
-Codex: copy [`AGENTS.md`](AGENTS.md) to your repo root · Cursor: copy
-[`.cursor/rules/invairiant.mdc`](.cursor/rules/invairiant.mdc) · per-agent detail:
-[skill/README.md](skill/README.md). Then, in the agent:
-
-```text
-/invairiant audit-pr 123      # runs the lens pipeline → a paste-ready PR comment
-```
-
-**2 · Install the deterministic CLI helper** — *optional.* The seatbelt the
-skill shells out to (collect evidence · validate · render · gate); it never
-runs a lens or produces a finding.
-
-```bash
-pip install invairiant                                    # from a checkout for dev: pip install -e .
-invairiant collect --scope pr --pr 123 --out .invairiant/cache/b.json
-invairiant render-comment report.json                     # paste-ready PR comment
-invairiant ci-gate report.json                            # exit 1 on open S0/S1
-```
-
-Full worked run: [docs/demo.md](docs/demo.md). Gate PRs in CI with the
-[GitHub Action](docs/github-action.md). No tooling at all? Run the protocol by
-hand from [`examples/`](examples/) + [docs/audit-workflow.md](docs/audit-workflow.md).
-
-## No evidence. No finding.
-
-invAIriant turns senior-engineer judgment into a **reusable audit protocol**:
-named lenses, evidence rules, a severity model, JSON schemas, report
-templates, and AI-ready prompts — for complex software systems, especially
-systems built with AI assistance, where architectural invariants have to
-survive rapid change.
-
-The council in the banner is not decoration. Each seat is a **lens** — a named
-school of questioning (Parnas → information hiding; Turing → termination and
-oracle boundaries; Lamport → time and ordering; Leveson → unsafe control). AI
-assistants can convene that whole council against your diff in minutes. The
-one rule that keeps it honest:
-
-> **AI may propose hypotheses. Only evidence-backed, verified claims become
-> findings.** A high average score never cancels a critical finding, and a
-> rejected hypothesis is kept in the report — never silently dropped, never
-> silently promoted.
-
-## How it works — the four-stage pipeline
-
-**Lenses discover. Evidence verifies. Severity gates.**
-
-Every audit, from a PR to a full-scale review, runs the same pipeline with
-**hard boundaries between stages** so AI volume becomes signal instead of
-noise. Each stage maps to a prompt in [`prompts/`](prompts/).
-
-```text
-   inputs: diff / repo @ commit, canonical docs, config, tool outputs
-                              │
-  [1] LENS PASS               │  one selected lens per pass
-      lens auditor            ▼  → score (0–10) + candidate findings + hypotheses
-                              │
-  [2] EVIDENCE VERIFICATION   │  adversarial: try to REFUTE each candidate
-      evidence verifier       ▼  → verified │ rejected │ demoted   (nothing dropped)
-                              │
-  [3] SEVERITY CLASSIFICATION │  rules, not averages
-      severity classifier     ▼  → S0 / S1 / S2 / S3 / NOTE
-                              │
-  [4] SYNTHESIS               │  rejected hypotheses stay visible
-      report synthesizer      ▼  → audit report + verdict (pass / conditions / fail)
-```
-
-**A lens pass is a discovery pass, not scoring-only:** each lens actively
-*searches* the bounded target for candidate architectural findings; a candidate
-becomes a finding only after adversarial evidence verification. The 0–10 score
-is a byproduct of the search, not its purpose.
-
-- Stage 1 may not assign final severity. Stage 2 may not invent findings.
-  Stage 3 touches only verified findings. Stage 4 may not drop a rejected
-  hypothesis.
-- Skills, scanners, and test suites plug in as **evidence adapters** — their
-  output enters as *candidate evidence*, never as findings on their own
-  authority ([docs/evidence-rules.md §7](docs/evidence-rules.md)).
-
-## The lens council
-
-A **lens** is a named school of questioning with a fixed structure: purpose,
-scope, core questions, good-state examples, red flags, required evidence, a
-0–10 rubric, finding examples, and a ready-to-paste AI prompt block. Lenses
-are grouped into **opt-in packs** so audits select by risk surface, not by
-famous name — **default audits use 4–6 lenses, not 20.**
-
-| Pack | For | Lenses |
-|---|---|---|
-| [**core**](lenses/core/) | most non-trivial codebases | Cormen · Parnas · Brooks · Dijkstra · McConnell · Turing |
-| [**systems**](lenses/systems/) | infra, runtime, distributed, stateful | Tanenbaum · von Neumann · Lamport · Harel · Kleppmann |
-| [**implementation**](lenses/implementation/) | code-level engineering quality | Ritchie · Kernighan · Ousterhout · Liskov |
-| [**correctness**](lenses/correctness/) | correctness-sensitive systems | Hoare (+ cross-listed Cormen · Turing · Harel) |
-| [**security-safety**](lenses/security-safety/) | security, privacy, safety, autonomy | Saltzer–Schroeder · Leveson · Security/Threat · Privacy · Operational-Resilience |
-| [**ai-generated-code**](lenses/ai-generated-code/) | AI-era codebases (first-class) | Oracle-Boundary · Prompt–Code-Drift · Generated-Surface-Area · Review-Bottleneck |
-| [**domain**](lenses/domain/) | opt-in, domain-specific | Network-Persistence · Distributed-Systems · Product-Operability |
-
-> **Lens names are mnemonic devices, not appeals to authority.** A finding is
-> right because of its evidence, never because of the name on the lens. Full
-> taxonomy and per-project selection guide: [docs/lens-taxonomy.md](docs/lens-taxonomy.md).
-
-## What it is, in one layer diagram
-
-invAIriant is an **audit discipline layer for AI-era software engineering** —
-not another CLI auditor. The market for those is full (Semgrep, CodeQL, Sonar,
-linters, dependency scanners); the fresh niche is a *protocol for AI-assisted
-architectural judgment*. So the product is the skill, and everything else
-supports it.
-
-| Layer | What it is | Status |
-|---|---|---|
-| **① Primary — the agent skill** | [`/invairiant`](skill/SKILL.md): an LLM coding agent runs the audit. PR is the main entrypoint; other **bounded targets** share the same pipeline — `audit-pr`, `audit-range`, `audit-commit`, `audit-module`, `audit-adr`, `audit-rp` (refactoring proposal), `full-audit`, `verify-findings`, `classify-severity`, `synthesize-report`, `closure-verification`. **This is the product.** | ✅ usable now |
-| **② Secondary — the protocol layer** | [schemas](schemas/) + [templates](templates/) + [prompt pack](prompts/) + [lenses](lenses/) — the reusable contract the skill (or a human) stands on. | ✅ usable now |
-| **③ Helper — a narrow CLI** | [`invairiant`](docs/cli.md): `init`, `collect`, `validate-config`, `validate-report`, `render-report`, `render-comment`, `ci-gate`, `record`, `history`. **It serves the audit; it never performs one** — no lenses, no findings, no scores. | ✅ reference impl |
-
-**Does it pull in other skills?** Yes — by design it *orchestrates* rather
-than *reinvents*. Security scanners, code-review skills, dependency auditors,
-and test runners are **evidence adapters**: the skill (often via
-`invairiant collect`) runs them, ingests their output as candidate
-evidence, and subjects it to the same verification as any human claim. It is
-the connective protocol that binds evidence, lenses, severity, and
-AI-assisted review into one auditable trail — not a replacement for the tools
-it consumes.
-
-## See it catch what a reviewer misses
-
-A **real recording of the live CLI** — an autonomous refund agent whose $50 cap
-is *checked but never enforced*, caught as an S1 and blocked. Run it:
-[`examples/refundpilot-demo/`](examples/refundpilot-demo/) · walkthrough:
-[docs/demo.md](docs/demo.md).
-
-<div align="center">
-<img src="assets/invairiant-demo.gif" alt="Real terminal recording: invairiant collect --scope adr, then validate-report (green OK), then ci-gate — FAILED, RFP-001 [S1], exit 1 blocking the merge" width="94%">
-</div>
-
-The audit report is the agent's (`/invairiant audit-adr`); the CLI validates,
-renders, and gates it. And the paste-ready PR comment it produces:
-
-<div align="center">
-<img src="assets/pr-comment.svg" alt="Example invAIriant PR-audit comment: verdict pass_with_conditions, an S1 finding PMT-001 with evidence and fix, a kept rejected hypothesis, and ci-gate exiting 1 to block the merge" width="88%">
-</div>
-
-Six worked [**case studies**](case-studies/) span the range — quick PR reviews
-through a **full-scale** audit, findings **open** and **fixed**, sources **real
-(redacted)** and illustrative. Two are drawn from real private codebases (names
-and specifics withheld):
-
-- [**low-latency-runtime**](case-studies/low-latency-runtime/) *(real · full-scale)*
-  — a "single-flight" backpressure that looks like textbook engineering but
-  isn't idempotent; **avg lens score ~7, verdict pass — yet Lamport (4) files a
-  real correctness finding the reviewer never saw.**
-- [**social-autopost**](case-studies/social-autopost/) *(real · PR)* — raw model
-  output auto-published to a live platform with no content gate; every guard
-  protects volume, none protects content.
-- [**persistent-mesh-transport**](case-studies/persistent-mesh-transport/) *(fixed)*
-  — a documented "fail-closed" TLS fallback that actually ships an active-probe
-  tell; the finding's recommendation *is* the fix.
-- [**ai-agent-refund-bot**](case-studies/ai-agent-refund-bot/) — model output
-  moves customer money with no cap or validation.
-- [**generated-typescript-api**](case-studies/generated-typescript-api/) — one
-  near-duplicate handler silently drops an authz check.
-- [**p2p-network-transport-change**](case-studies/p2p-network-transport-change/)
-  — an ordering assumption plus a distinguishable handshake fingerprint.
-
-## Evidence rules, in one screen
-
-Valid evidence — `file path + line range` · `diff hunk` · `test failure` ·
-`missing test` · `doc/code contradiction` · `CI output` · `runtime log` ·
-`incident` · `reproducible command output` · `schema/config mismatch`.
-
-Not evidence — "looks risky" · "probably overcomplicated" · "AI may have
-generated this" · "feels wrong" · a lens name without the concrete leak · a
-tool warning by itself.
-
-Everything unsupported is recorded as an **observation**, **hypothesis**, or
-**open question** — never as a finding. Full rules:
-[docs/evidence-rules.md](docs/evidence-rules.md).
-
-## Severity model, in one screen
-
-| | Meaning | Gate |
-|---|---|---|
-| **S0** | Critical | blocks merge / release / phase transition |
-| **S1** | High | fix before the next major step |
-| **S2** | Medium | next work cycle |
-| **S3** | Low | planned improvement |
-| **NOTE** | Note | no mandatory action |
-
-Scores map to severity by fixed rules (mandatory lens < 6.0 → ≥ S2; critical
-lens < 5.0 with concrete user risk → S0), and **a high average never launders
-a critical finding.** Full model: [docs/severity-model.md](docs/severity-model.md).
-
-## Repository layout
-
-```text
-README.md                this file
-AGENTS.md                portable agent entrypoint (Codex · Cursor · any agent)
-skill/                   ① the /invairiant agent skill — the primary product
-.cursor/rules/           Cursor rule (mirrors the skill)
-docs/                    methodology · evidence-rules · severity-model ·
-                         audit-workflow · lens-taxonomy · cli · demo · related-work
-lenses/                  the lens library (7 packs, 28 lenses)
-templates/               audit-report · finding · pr-comment ·
-                         phase-transition-audit · event-triggered-audit
-schemas/                 finding · audit-report · lens · config ·
-                         evidence-bundle  (JSON Schema)
-prompts/                 lens-auditor · evidence-verifier ·
-                         severity-classifier · report-synthesizer
-cli/                     ③ the narrow invairiant CLI (serves the audit)
-case-studies/            6 worked audits — 2 real (redacted) + 4 illustrative
-examples/                minimal-webapp · infra-service · ai-agent-system
-.invairiant/history/     committed, sanitized audit memory (record / history)
-action.yml               reusable GitHub Action — validate + gate on S0/S1
-.github/workflows/       framework self-validation
-```
-
-## Anti-overengineering rules (canon)
-
-1. Default audits use **4–6 lenses, not 20**.
-2. Additional packs are **opt-in**.
-3. A small PR does not trigger a full philosophical tribunal.
-4. Lens selection must match the **risk surface**.
-5. Lens names are **mnemonic devices**, not appeals to authority.
-6. A **boring concrete finding** beats a brilliant abstract concern.
-7. The framework must **reduce** review ambiguity, not add ritual.
-
-## What invAIriant is not
-
-Not a security certification · not a replacement for human review · not a
-proof of correctness · not a replacement for tests, static analysis,
-SAST/DAST, threat modeling, or formal methods (it turns their output into
-evidence — [docs/related-work.md](docs/related-work.md)) · not a generator of
-findings without evidence · not architecture cosplay.
-
-And not "AI, wander the repo and tell me what you think." **invAIriant audits
-bounded engineering scopes, not vibes** — PRs, commit ranges, single commits,
-modules, ADR↔code drift, refactoring proposals. A scope it cannot bound is
-refused, not widened.
-
-## Contributing
-
-Single maintainer: **[@mindicator](https://github.com/mindicator)**. Docs
-authorship is credited as *mindicator & silicon bags quartet*. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Origins
-
-invAIriant was forged in the fire of **AI-assisted development on complex,
-high-load, tangled systems** — the kind where an agent ships a plausible diff
-every few minutes and locally-reasonable changes quietly break global
-invariants. Run after run, the same failures recurred: confident findings with
-no evidence, critical risks laundered by good vibes, refuted hypotheses
-re-proposed, architecture drifting one small commit at a time. The lenses, the
-0–10 scale, the score-to-severity mapping, the anti-averaging rules, and the
-evidence-first pipeline are what survived that pressure. **It is built for the
-way software is written now — with AI in the loop.**
-
-## Status
-
-**v0.2.5.** The protocol layer — docs, 28 lenses, templates, schemas,
-prompts, skill, examples — is usable as-is, and the `invairiant` CLI ships as
-a working reference implementation (scaffold · collect · validate · render ·
-gate · audit memory) with CI dogfooding it. **v0.2 adds bounded audit scopes** —
-PR (by number), commit range, single commit, module, ADR↔code drift, refactoring
-proposal — over the same pipeline, each `collect --scope …` failing closed rather
-than widening, and **still no new lenses**. The CLI is **on PyPI**
-([`pip install invairiant`](https://pypi.org/project/invairiant/)) — self-contained,
-the framework it needs rides in the wheel. What's next (Marketplace, more case
-studies) is in [ROADMAP.md](ROADMAP.md). Treat the [schemas](schemas/) as the
-stable contract.
-
-## License
-
-[Apache-2.0](LICENSE). Copyright © 2026 **mindicator & silicon bags
-quartet**.
+Apache-2.0 · © 2026 mindicator · [Contributing](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
