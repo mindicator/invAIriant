@@ -23,7 +23,10 @@ Your coding agent runs the audit and gates the merge on real findings. Claude Co
 An LLM can propose anything; only cited, verified findings count. invAIriant runs a
 named set of review lenses over a bounded change, then makes every candidate survive
 adversarial evidence checks before it becomes a finding. Lenses discover, evidence
-verifies, severity gates. A high average score never cancels a critical finding.
+verifies, severity gates.
+
+**Status: early.** Usable now as an agent skill; the CLI and CI support are
+intentionally small and deterministic.
 
 ## Start
 
@@ -43,11 +46,11 @@ pip install invairiant
 invairiant ci-gate report.json      # exits 1 on an open S0/S1 finding
 ```
 
-## See it catch what a reviewer missed
+## Worked examples
 
-[**low-latency-runtime**](case-studies/low-latency-runtime/): average lens score ~7,
-verdict *pass* — yet one lens files a real correctness finding the reviewer never saw.
-Five more worked audits in [case-studies/](case-studies/), and a runnable demo in
+The [low-latency-runtime](case-studies/low-latency-runtime/) example shows the core
+rule: a passing summary does not erase a verified finding. Five more worked audits in
+[case-studies/](case-studies/), and a runnable demo in
 [examples/refundpilot-demo/](examples/refundpilot-demo/).
 
 ## Learn more
