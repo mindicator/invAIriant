@@ -131,15 +131,21 @@ class TestADR:
         with pytest.raises(cli.ScopeError):
             cli._resolve_scope(_ns(scope="adr", path=str(adr)))
 
-    def test_too_broad_fails_without_narrow(self, cli):
-        # README is a project index referencing most of the repo — not a bounded
-        # decision area. It must fail closed and demand --narrow, not resolve to
-        # ~the whole repo just because each ref is a strict subset.
-        with pytest.raises(cli.ScopeError, match="too broadly"):
-            cli._resolve_scope(_ns(scope="adr", path="README.md"))
+    def _broad_adr(self, tmp_path):
+        # an ADR that points at most of the repo — not a bounded decision area
+        adr = tmp_path / "broad.md"
+        adr.write_text("This spans `lenses/`, `case-studies/`, `docs/`, `examples/`, "
+                       "`schemas/`, `templates/`, `prompts/`, and `cli/invairiant.py`.")
+        return str(adr)
 
-    def test_too_broad_recovers_with_narrow(self, cli):
-        s = cli._resolve_scope(_ns(scope="adr", path="README.md", narrow="cli"))
+    def test_too_broad_fails_without_narrow(self, cli, tmp_path):
+        # resolving to ~everything must fail closed and demand --narrow, not
+        # silently widen just because each ref is a strict subset.
+        with pytest.raises(cli.ScopeError, match="too broadly"):
+            cli._resolve_scope(_ns(scope="adr", path=self._broad_adr(tmp_path)))
+
+    def test_too_broad_recovers_with_narrow(self, cli, tmp_path):
+        s = cli._resolve_scope(_ns(scope="adr", path=self._broad_adr(tmp_path), narrow="cli"))
         assert s["files"] and all(f.startswith("cli/") for f in s["files"])
 
     def test_broad_limit_is_relative_to_repo_size(self, cli):
@@ -170,9 +176,12 @@ class TestRP:
         with pytest.raises(cli.ScopeError):
             cli._resolve_scope(_ns(scope="rp", path=str(rp)))
 
-    def test_too_broad_message_names_the_proposal(self, cli):
+    def test_too_broad_message_names_the_proposal(self, cli, tmp_path):
+        rp = tmp_path / "rp.md"
+        rp.write_text("Refactor spans `lenses/`, `case-studies/`, `docs/`, "
+                      "`examples/`, `schemas/`, `templates/`, and `prompts/`.")
         with pytest.raises(cli.ScopeError, match="refactoring proposal references resolved too broadly"):
-            cli._resolve_scope(_ns(scope="rp", path="README.md"))
+            cli._resolve_scope(_ns(scope="rp", path=str(rp)))
 
     def test_e2e_bundle_kind_is_rp(self, cli_path, repo_root, tmp_path):
         rp = tmp_path / "rp.md"
