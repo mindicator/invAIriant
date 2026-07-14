@@ -196,3 +196,33 @@ class TestCheckCitations:
         rp.write_text(json.dumps(self._report("1-999999")), encoding="utf-8")
         proc = _run(cli_path, repo_root, "validate-report", str(rp))
         assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+# --------------------------------------------------------------------------- #
+# verify-provenance (bind report ↔ commit ↔ bundle; issue #2)
+# --------------------------------------------------------------------------- #
+class TestVerifyProvenance:
+    def _head(self, repo_root):
+        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(repo_root),
+                              capture_output=True, text=True).stdout.strip()
+
+    def test_matching_commit_passes(self, cli_path, repo_root, tmp_path):
+        head = self._head(repo_root)
+        rp = tmp_path / "r.json"
+        rp.write_text(json.dumps({"provenance": {"commit_sha": head}}), encoding="utf-8")
+        proc = _run(cli_path, repo_root, "verify-provenance", str(rp), "--commit", head)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "verified" in proc.stdout
+
+    def test_wrong_commit_fails(self, cli_path, repo_root, tmp_path):
+        rp = tmp_path / "r.json"
+        rp.write_text(json.dumps({"provenance": {"commit_sha": "0" * 40}}), encoding="utf-8")
+        proc = _run(cli_path, repo_root, "verify-provenance", str(rp), "--commit", "abcdef1234")
+        assert proc.returncode == 1
+        assert "was built for commit" in proc.stdout
+
+    def test_missing_provenance_require_fails(self, cli_path, repo_root, tmp_path):
+        rp = tmp_path / "r.json"
+        rp.write_text(json.dumps({"findings": []}), encoding="utf-8")
+        proc = _run(cli_path, repo_root, "verify-provenance", str(rp), "--require")
+        assert proc.returncode == 1

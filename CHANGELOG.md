@@ -19,6 +19,15 @@ follows Keep a Changelog; versions track the protocol.
     **citation-existence** pass: every `file_lines` evidence item must cite a
     real file whose line range exists (working tree, or at a commit). It
     confirms "the cited location is real", never whether a finding is true.
+  - `invairiant verify-provenance <report> [--bundle B] [--commit SHA]
+    [--require]` — proves the report is bound to the commit (and, with
+    `--bundle`, to the evidence bundle) it claims. Hard errors for a
+    commit-sha mismatch, a malformed hash, or an edited bundle; warnings for
+    cross-machine content differences, so a CI gate does not flake. The bundled
+    **GitHub Action** now runs it after `validate-report` (binding to the PR
+    head sha and the freshly-collected bundle); a new `require-provenance` input
+    flips the missing-block nudge into a hard failure. This closes the
+    Action-side of the report↔bundle↔commit binding.
 - **Evidence provenance — first step** (from external review, [#2](https://github.com/mindicator/invairiant/issues/2)).
   `collect` now emits a `provenance` block: `commit_sha`, `scope_hash`, and a
   `bundle_hash` that recomputes over the bundle (minus itself) — so a later step

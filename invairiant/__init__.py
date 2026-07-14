@@ -25,7 +25,8 @@ from .scopes import (
 )
 from .evidence import (
     _sha256, _scan, _new_budget, _SIGNAL_PATTERNS,
-    cmd_collect, cmd_collect_evidence,
+    _provenance_check, _recompute_bundle_hash, _sha_matches,
+    cmd_collect, cmd_collect_evidence, cmd_verify_provenance,
 )
 from .render import cmd_render_report, cmd_render_comment
 

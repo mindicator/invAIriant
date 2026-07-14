@@ -6,6 +6,7 @@ finding, or assigns a score.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -16,17 +17,84 @@ from pathlib import Path
 
 from .history import _history_dir
 from .models import ResolvedScope
-from .schemas import _need
+from .schemas import _COMMIT_RE, _SHA256_RE, _need
 from .scopes import ScopeError, _resolve_scope, _scope_detail
 from .subprocesses import (_MAX_FILE_BYTES, _MAX_SCAN_FILES, _git,
                            _is_probably_binary, _ls_files, _run)
-from .term import _c, _dim
+from .term import _bad, _c, _die, _dim, _ok, _warn
 
 def _sha256(obj) -> str:
     """Stable sha256 over a JSON-serializable value (sorted keys, no whitespace)."""
     return hashlib.sha256(
         json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
+
+
+def _recompute_bundle_hash(bundle: dict) -> str:
+    """The bundle_hash `collect` would have written: sha256 over the bundle with
+    provenance.bundle_hash removed. Recompute it to prove the bundle wasn't edited."""
+    b = copy.deepcopy(bundle)
+    if isinstance(b.get("provenance"), dict):
+        b["provenance"].pop("bundle_hash", None)
+    return _sha256(b)
+
+
+def _sha_matches(a: str, b: str) -> bool:
+    """True if two commit shas name the same commit (prefix match, min 7 chars),
+    so a short sha in the report matches a full sha from git."""
+    a, b = str(a).lower(), str(b).lower()
+    n = min(len(a), len(b))
+    return n >= 7 and a[:n] == b[:n]
+
+
+def _provenance_check(report: dict, commit=None, bundle=None, require=False):
+    """Mechanical provenance verification (issue #2): does the report bind to the
+    commit — and, if a bundle is given, to that bundle — it claims to be built
+    from? Judgment-free: hashing and equality only, never whether a finding is
+    real. Returns (errors, warnings).
+
+    Hard checks (portable, deterministic) are errors; content-level cross-machine
+    signals (scope_hash / bundle_hash mismatch vs a freshly-collected bundle) are
+    warnings, so the gate does not flake across environments."""
+    errs, warns = [], []
+    prov = report.get("provenance")
+    if not prov:
+        msg = "report has no 'provenance' block — cannot bind it to a commit or bundle"
+        (errs if require else warns).append(msg)
+        return errs, warns
+    for key, rx in (("bundle_hash", _SHA256_RE), ("scope_hash", _SHA256_RE),
+                    ("commit_sha", _COMMIT_RE)):
+        v = prov.get(key)
+        if v is not None and not rx.match(str(v)):
+            errs.append(f"provenance.{key} is not a valid hash")
+    # 1) commit binding (portable, hard): the report must name the audited commit.
+    if commit:
+        rc = prov.get("commit_sha")
+        if not rc:
+            (errs if require else warns).append(
+                "provenance has no commit_sha to bind to the audited commit")
+        elif not _sha_matches(rc, commit):
+            errs.append(f"report was built for commit {str(rc)[:12]} but the audited "
+                        f"commit is {str(commit)[:12]}")
+    # 2) bundle binding: compare against a (freshly-collected) evidence bundle.
+    if bundle is not None:
+        bp = bundle.get("provenance") or {}
+        if bp.get("bundle_hash") and _recompute_bundle_hash(bundle) != bp["bundle_hash"]:
+            errs.append("evidence bundle is corrupt or was edited "
+                        "(its bundle_hash does not recompute)")
+        if prov.get("commit_sha") and bp.get("commit_sha") and \
+                not _sha_matches(prov["commit_sha"], bp["commit_sha"]):
+            errs.append("report.commit_sha does not match the bundle's commit_sha")
+        if prov.get("scope_hash") and bp.get("scope_hash") and \
+                prov["scope_hash"] != bp["scope_hash"]:
+            warns.append("report.scope_hash differs from the bundle's — the report may "
+                         "cover a different scope than this bundle")
+        if prov.get("bundle_hash") and bp.get("bundle_hash") and \
+                prov["bundle_hash"] != bp["bundle_hash"]:
+            warns.append("report.bundle_hash differs from this bundle's — the report was "
+                         "built from a different bundle (expected only if collect ran in a "
+                         "different layout)")
+    return errs, warns
 
 
 # --------------------------------------------------------------------------- #
@@ -352,4 +420,36 @@ def cmd_collect(args) -> int:
               f"signal(s); {_dim('raw — keep it gitignored')}")
     else:
         print(payload)
+    return 0
+
+
+def _load_json(path: str, label: str):
+    p = Path(path)
+    if not p.exists():
+        _die(f"{label} not found: {path}", 3)
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        _die(f"{path}: could not read/parse {label}: {exc}", 3)
+
+
+def cmd_verify_provenance(args) -> int:
+    """Prove a report is bound to its commit — and, with --bundle, to the evidence
+    bundle it was built from. Mechanical integrity only; the CLI never judges a
+    finding. The report half of report↔bundle↔commit (issue #2)."""
+    report = _load_json(args.report, "report")
+    bundle = _load_json(args.bundle, "bundle") if args.bundle else None
+    commit = args.commit
+    if commit is None:                       # default: bind to git HEAD when in a repo
+        commit = _git(["rev-parse", "HEAD"]) or None
+    errs, warns = _provenance_check(report, commit=commit, bundle=bundle,
+                                    require=args.require)
+    for w in warns:
+        print(f"  {_warn('⚠')} {w}")
+    for e in errs:
+        print(f"  {_bad('✗')} {e}")
+    if errs:
+        _die(f"{len(errs)} provenance problem(s)", 1)
+    bound = "commit" + ("+bundle" if bundle else "")
+    print(_ok("OK: provenance verified.") + _dim(f" ({bound})"))
     return 0

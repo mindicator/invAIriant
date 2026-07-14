@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .evidence import cmd_collect, cmd_collect_evidence
+from .evidence import cmd_collect, cmd_collect_evidence, cmd_verify_provenance
 from .history import cmd_history, cmd_record
 from .render import cmd_render_comment, cmd_render_report
 from .schemas import EXAMPLES, cmd_ci_gate, cmd_validate_config, cmd_validate_report
@@ -116,6 +116,17 @@ def main(argv=None) -> int:
     pe.add_argument("--timeout", type=int, default=180)
     pe.add_argument("--max-chars", type=int, default=4000)
     pe.set_defaults(func=cmd_collect_evidence)
+
+    pvp = sub.add_parser("verify-provenance",
+                         help="prove a report binds to its commit (and, with --bundle, its evidence bundle)")
+    pvp.add_argument("report")
+    pvp.add_argument("--bundle", default=None,
+                     help="evidence bundle (from `collect`) to compare the report's provenance against")
+    pvp.add_argument("--commit", default=None,
+                     help="the audited commit to bind to (default: git HEAD)")
+    pvp.add_argument("--require", action="store_true",
+                     help="fail if the report carries no provenance block (default: warn)")
+    pvp.set_defaults(func=cmd_verify_provenance)
 
     prr = sub.add_parser("render-report", help="deterministically render a report JSON to Markdown")
     prr.add_argument("report")

@@ -331,3 +331,70 @@ class TestCitationCheck:
             {"type": "file_lines", "file": "f.py", "lines": "1-3", "commit": "HEAD"}])) == []
         assert any("out of range" in e for e in cli._citation_errors(self._report([
             {"type": "file_lines", "file": "f.py", "lines": "9", "commit": "HEAD"}])))
+
+
+# --------------------------------------------------------------------------- #
+# _provenance_check  (bind report ↔ commit ↔ bundle — issue #2)
+# --------------------------------------------------------------------------- #
+class TestProvenanceCheck:
+    def _rep(self, **prov):
+        return {"provenance": prov} if prov else {}
+
+    def _bundle(self, **prov):
+        b = {"schema": "invairiant.evidence-bundle/v1", "signals": {}, "provenance": dict(prov)}
+        return b
+
+    def test_no_provenance_warns_by_default(self, cli):
+        errs, warns = cli._provenance_check({}, commit="abcdef1234")
+        assert errs == [] and any("no 'provenance'" in w for w in warns)
+
+    def test_no_provenance_errors_with_require(self, cli):
+        errs, _ = cli._provenance_check({}, commit="abcdef1234", require=True)
+        assert any("no 'provenance'" in e for e in errs)
+
+    def test_commit_match_is_clean(self, cli):
+        errs, _ = cli._provenance_check(self._rep(commit_sha="abcdef1234567890"),
+                                        commit="abcdef1234567890")
+        assert errs == []
+
+    def test_commit_short_vs_full_matches(self, cli):
+        errs, _ = cli._provenance_check(self._rep(commit_sha="abcdef1"),
+                                        commit="abcdef1234567890")
+        assert errs == []
+
+    def test_commit_mismatch_is_error(self, cli):
+        errs, _ = cli._provenance_check(self._rep(commit_sha="deadbeef1"), commit="abcdef1234")
+        assert any("was built for commit" in e for e in errs)
+
+    def test_malformed_hash_is_error(self, cli):
+        errs, _ = cli._provenance_check(self._rep(bundle_hash="not-a-valid-hash"))
+        assert any("bundle_hash is not a valid hash" in e for e in errs)
+
+    def test_bundle_match_is_clean(self, cli):
+        b = self._bundle(commit_sha="a" * 40, scope_hash="b" * 64)
+        b["provenance"]["bundle_hash"] = cli._recompute_bundle_hash(b)
+        report = self._rep(commit_sha="a" * 40, scope_hash="b" * 64,
+                           bundle_hash=b["provenance"]["bundle_hash"])
+        errs, warns = cli._provenance_check(report, bundle=b)
+        assert errs == [] and not any("differs" in w for w in warns)
+
+    def test_edited_bundle_fails_integrity(self, cli):
+        b = self._bundle(commit_sha="a" * 40)
+        b["provenance"]["bundle_hash"] = cli._recompute_bundle_hash(b)
+        b["signals"]["injected"] = ["tamper"]           # edited after it was hashed
+        errs, _ = cli._provenance_check(self._rep(commit_sha="a" * 40), bundle=b)
+        assert any("corrupt or was edited" in e for e in errs)
+
+    def test_bundle_hash_mismatch_is_warning_not_error(self, cli):
+        b = self._bundle(commit_sha="a" * 40, scope_hash="b" * 64)
+        b["provenance"]["bundle_hash"] = cli._recompute_bundle_hash(b)
+        report = self._rep(commit_sha="a" * 40, scope_hash="b" * 64, bundle_hash="c" * 64)
+        errs, warns = cli._provenance_check(report, bundle=b)
+        assert errs == [] and any("bundle_hash differs" in w for w in warns)
+
+    def test_commit_mismatch_vs_bundle_is_error(self, cli):
+        b = self._bundle(commit_sha="a" * 40)
+        b["provenance"]["bundle_hash"] = cli._recompute_bundle_hash(b)
+        report = self._rep(commit_sha="f" * 40, bundle_hash=b["provenance"]["bundle_hash"])
+        errs, _ = cli._provenance_check(report, bundle=b)
+        assert any("does not match the bundle's commit_sha" in e for e in errs)

@@ -202,6 +202,27 @@ as `validate-report`. Wire it into CI after the agent files a report:
 - run: python3 cli/invairiant.py ci-gate docs/audits/latest.json
 ```
 
+### `invairiant verify-provenance <report.json> [--bundle B] [--commit SHA] [--require]`
+Prove a report is **bound** to the commit — and, with `--bundle`, to the evidence
+bundle — it was built from. Mechanical integrity only (hashing + equality); the
+CLI never decides whether a finding is real. The verification half of the
+report↔bundle↔commit chain ([issue #2](https://github.com/mindicator/invAIriant/issues/2)).
+
+Checks, split so a CI gate does not flake across machines:
+
+- **errors (exit 1)** — the report's `provenance.commit_sha` does not name the
+  audited `--commit` (default: git `HEAD`); a hash is malformed; with `--bundle`,
+  the bundle's own `bundle_hash` does not recompute (it was edited) or its
+  `commit_sha` disagrees with the report's;
+- **warnings** — a missing `provenance` block (unless `--require`), or a
+  `scope_hash` / `bundle_hash` that differs from the given bundle's (a
+  content-level signal that can differ benignly across environments).
+
+The bundled [GitHub Action](../action.yml) runs this after `validate-report`,
+binding to the PR head sha and, when `collect` ran, to the freshly-gathered
+bundle. It's a **warn-first** rollout: a report without provenance nudges but
+does not fail until you set the Action's `require-provenance: true`.
+
 ### `invairiant record <report.json> [--audit-id ID] [--dir D]`
 Append a report's **distilled, sanitized** memory to `.invairiant/history/`
 (committed, default dir):

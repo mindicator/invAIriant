@@ -1,5 +1,5 @@
 name: "invAIriant audit gate"
-description: "Validate an invAIriant audit report, render it into the job summary, and fail CI on open S0/S1 findings."
+description: "Validate an invAIriant audit report, verify its provenance binding, render it into the job summary, and fail CI on open S0/S1 findings."
 branding:
   icon: "shield"
   color: "purple"
@@ -13,6 +13,10 @@ inputs:
     description: "ci-gate blocking level: S1 (default, blocks S0+S1) or S0 (blocks only S0)."
     required: false
     default: "S1"
+  require-provenance:
+    description: 'If "true", fail when the report carries no provenance block (default: warn only — staged rollout of issue #2).'
+    required: false
+    default: "false"
   collect:
     description: 'If "true", also generate an evidence bundle at invairiant-bundle.json (for artifact upload / an agent step).'
     required: false
@@ -88,6 +92,23 @@ runs:
       if: ${{ inputs.report != '' }}
       shell: bash
       run: python "$INVAIRIANT_HOME/cli/invairiant.py" validate-report "${{ inputs.report }}"
+
+    - name: Verify provenance (report ↔ commit ↔ bundle)
+      if: ${{ inputs.report != '' }}
+      shell: bash
+      env:                       # pass via env — never interpolate inputs into the script
+        REPORT: ${{ inputs.report }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        REQUIRE: ${{ inputs.require-provenance }}
+      run: |
+        set -euo pipefail
+        args=(verify-provenance "$REPORT")
+        # pull_request checkouts are a synthetic merge ref — bind to the PR head sha.
+        if [ -n "${HEAD_SHA:-}" ];               then args+=(--commit "$HEAD_SHA"); fi
+        # compare against the bundle freshly collected this run, if any.
+        if [ -f invairiant-bundle.json ];        then args+=(--bundle invairiant-bundle.json); fi
+        if [ "${REQUIRE:-false}" = "true" ];     then args+=(--require); fi
+        python "$INVAIRIANT_HOME/cli/invairiant.py" "${args[@]}"
 
     - name: Render report into the job summary
       if: ${{ always() && inputs.report != '' }}
