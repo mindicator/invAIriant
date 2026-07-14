@@ -169,8 +169,13 @@ def _report_threshold(config_path) -> float:
     return 6.0
 
 
-def _semantic_report_errors(data: dict, low_threshold: float):
-    """Protocol rules the JSON schema can't express. Returns (errors, warnings)."""
+def _semantic_report_errors(data: dict, low_threshold: float, strict: bool = False):
+    """Protocol rules the JSON schema can't express. Returns (errors, warnings).
+
+    `strict` promotes the provenance-completeness *nudges* — a `verified` finding
+    with no `verification` record, and a findings-bearing report with no
+    `provenance` block — from warnings to errors, so a project can enforce the
+    staged-rollout requirements (issue #2) in its own CI before the defaults flip."""
     errs, warns = [], []
     findings = data.get("findings", [])
     ids = [f.get("id") for f in findings]
@@ -186,8 +191,9 @@ def _semantic_report_errors(data: dict, low_threshold: float):
         if f.get("status") == "verified":
             v = f.get("verification") or {}
             if not (v.get("verified_by") and v.get("method")):
-                warns.append(f"{f.get('id')}: status 'verified' but no verification record "
-                             "(verified_by + method) — provenance incomplete")
+                (errs if strict else warns).append(
+                    f"{f.get('id')}: status 'verified' but no verification record "
+                    "(verified_by + method) — provenance incomplete")
     # verdict must derive from open findings, never from score averages
     verdict = (data.get("summary") or {}).get("verdict")
     openf = [f for f in findings if f.get("status") != "rejected"]
@@ -221,9 +227,10 @@ def _semantic_report_errors(data: dict, low_threshold: float):
     prov = data.get("provenance")
     if not prov:
         if findings:
-            warns.append("no 'provenance' block — a report with findings should carry "
-                         "commit_sha + bundle_hash from the bundle it was built from "
-                         "(`invairiant collect` emits them) so it binds to its commit")
+            (errs if strict else warns).append(
+                "no 'provenance' block — a report with findings should carry "
+                "commit_sha + bundle_hash from the bundle it was built from "
+                "(`invairiant collect` emits them) so it binds to its commit")
     else:
         for key, rx in (("bundle_hash", _SHA256_RE), ("scope_hash", _SHA256_RE),
                         ("commit_sha", _COMMIT_RE)):
@@ -339,7 +346,8 @@ def cmd_validate_report(args) -> int:
             continue
         errs = _errors(validator, data, p)
         if not args.schema_only:
-            serrs, warns = _semantic_report_errors(data, threshold)
+            serrs, warns = _semantic_report_errors(data, threshold,
+                                                   strict=getattr(args, "strict", False))
             for w in warns:
                 print(f"  {_warn('⚠')} {p}: {w}")
             for e in serrs:

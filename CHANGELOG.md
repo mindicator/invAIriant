@@ -40,6 +40,15 @@ follows Keep a Changelog; versions track the protocol.
 
 ### Changed
 
+- **Verifier provenance fields + `validate-report --strict`** (issue
+  [#2](https://github.com/mindicator/invairiant/issues/2)). A finding's
+  `verification` object may now record `model` (the verifying model) and `run`
+  (a CI run / session / commit reference) alongside `verified_by` + `method` —
+  self-reported but auditable. New `--strict` promotes the two
+  provenance-completeness nudges (a `verified` finding without a `verification`
+  record; a findings-bearing report without a `provenance` block) from warnings
+  to errors, so a project can enforce the staged-rollout requirements in its own
+  CI before the defaults flip. Additive: default behaviour is unchanged.
 - **Typed scope models.** The scope resolvers now return a frozen
   `ResolvedScope` dataclass with a `ScopeKind` enum instead of a loose `dict`,
   so a field-name typo (`scope.head_cheked_out`) fails loudly at attribute

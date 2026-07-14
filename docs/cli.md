@@ -64,7 +64,7 @@ Validate config(s) against
 [`schemas/invairiant.config.schema.json`](../schemas/invairiant.config.schema.json).
 Default path `invairiant.config.yml`. Exit 0 = valid, 1 = problems.
 
-### `invairiant validate-report <paths...> [--schema-only] [--md] [--check-citations] [--commit SHA]`
+### `invairiant validate-report <paths...> [--schema-only] [--md] [--strict] [--check-citations] [--commit SHA]`
 Validate audit report JSON against
 [`schemas/audit-report.schema.json`](../schemas/audit-report.schema.json)
 (findings resolve against the finding schema) **plus a semantic pass** for the
@@ -80,7 +80,8 @@ protocol rules a schema cannot express:
 - the report keeps a `hypotheses` section (rejected hypotheses are not
   deleted);
 - a finding marked `status: verified` carries a `verification` record
-  (`verified_by` + `method`) — **warning** for now, so provenance is visible
+  (`verified_by` + `method`; optional `model` + `run` record the verifier's
+  model and a run reference) — **warning** for now, so provenance is visible
   before it becomes required;
 - the report carries a **`provenance`** block (`commit_sha`, `scope_hash`,
   `bundle_hash`, copied from the bundle `collect` built it from) that binds it to
@@ -92,6 +93,12 @@ protocol rules a schema cannot express:
 `--schema-only` runs just the schema check. `--md` structurally lints a
 **rendered markdown** report (H1, sections, verdict, kept hypotheses present) —
 JSON stays the source of truth.
+
+**`--strict`** promotes the two provenance-completeness *nudges* — a `verified`
+finding with no `verification` record, and a findings-bearing report with no
+`provenance` block — from warnings to **errors**. It lets a project enforce the
+staged-rollout requirements ([issue #2](https://github.com/mindicator/invAIriant/issues/2))
+in its own CI before the defaults flip, without touching anyone else's reports.
 
 **`--check-citations`** (opt-in) adds a mechanical **citation-existence** pass:
 for every `file_lines` evidence item, it confirms the cited `file` exists and its

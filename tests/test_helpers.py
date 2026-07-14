@@ -191,6 +191,34 @@ class TestSemanticReportErrors:
         errs, _ = cli._semantic_report_errors(d, 6.0)
         assert any("bundle_hash" in e and "not a valid hash" in e for e in errs)
 
+    def test_strict_promotes_verified_without_verification_to_error(self, cli, base_report, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        d = base_report()
+        d["findings"] = [self._finding(id="T-1", status="verified")]     # no verification
+        d["provenance"] = {"commit_sha": "a" * 40}                       # so only the verification nudge fires
+        d["summary"]["verdict"] = "pass_with_conditions"
+        errs, warns = cli._semantic_report_errors(d, 6.0, strict=True)
+        assert any("verification record" in e for e in errs)
+        assert not any("verification record" in w for w in warns)
+
+    def test_strict_promotes_missing_provenance_to_error(self, cli, base_report, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        d = base_report()
+        d["findings"] = [self._finding(id="T-1", verification={"verified_by": "a", "method": "b"})]
+        d["summary"]["verdict"] = "pass_with_conditions"
+        errs, _ = cli._semantic_report_errors(d, 6.0, strict=True)
+        assert any("provenance" in e and "bundle_hash" in e for e in errs)
+
+    def test_default_keeps_completeness_nudges_as_warnings(self, cli, base_report, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        d = base_report()
+        d["findings"] = [self._finding(id="T-1", status="verified")]     # no verification, no provenance
+        d["summary"]["verdict"] = "pass_with_conditions"
+        errs, warns = cli._semantic_report_errors(d, 6.0)                # non-strict default
+        assert not any("verification record" in e or "provenance" in e for e in errs)
+        assert any("verification record" in w for w in warns)
+        assert any("provenance" in w for w in warns)
+
     def test_lens_score_evidence_ref_to_unknown_finding_is_error(self, cli, base_report):
         d = base_report()
         d["findings"] = [self._finding(id="T-001")]

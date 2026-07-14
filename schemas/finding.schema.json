@@ -73,12 +73,15 @@
     "verification": {
       "type": "object",
       "additionalProperties": false,
+      "description": "Who re-checked this finding, how, and with what. Self-reported but auditable — provenance for the verification step (issue #2).",
       "properties": {
-        "verified_by": { "type": "string" },
+        "verified_by": { "type": "string", "description": "Identity of the verifier — the agent/human who re-ran the check (e.g. 'agent-2', 'jsmith')." },
         "method": {
           "type": "string",
           "description": "How the evidence was checked: file read, command re-run, test executed, doc cross-read."
         },
+        "model": { "type": "string", "description": "The model that performed the verification, if an agent (e.g. 'claude-opus-4-8'). Self-reported." },
+        "run": { "type": "string", "description": "A reference tying the verification to a run: a CI run URL/id, a session id, or a commit." },
         "notes": { "type": "string" }
       }
     },

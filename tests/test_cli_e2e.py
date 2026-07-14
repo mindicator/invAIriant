@@ -226,3 +226,33 @@ class TestVerifyProvenance:
         rp.write_text(json.dumps({"findings": []}), encoding="utf-8")
         proc = _run(cli_path, repo_root, "verify-provenance", str(rp), "--require")
         assert proc.returncode == 1
+
+
+# --------------------------------------------------------------------------- #
+# validate-report --strict (promote provenance-completeness nudges to errors)
+# --------------------------------------------------------------------------- #
+class TestStrict:
+    def _report(self):
+        # schema-valid, but a `verified` finding with no verification record and
+        # no top-level provenance block — both are warnings by default.
+        return {
+            "title": "strict e2e", "date": "2026-07-14", "audit_type": "pr",
+            "scope": "fixture", "lens_scores": [], "hypotheses": [],
+            "findings": [{
+                "id": "S-001", "severity": "S2", "lens": "parnas",
+                "claim": "A verified finding that omits its verification record.",
+                "evidence": [{"type": "diff_hunk", "hunk": "-a\n+b"}],
+                "confidence": "high", "status": "verified",
+                "risk": "A non-trivial risk statement for the fixture.",
+                "recommendation": "A concrete recommendation for the fixture."}],
+            "summary": {"verdict": "pass_with_conditions", "executive_summary": "fixture",
+                        "required_actions": []},
+        }
+
+    def test_default_passes_but_strict_fails(self, cli_path, repo_root, tmp_path):
+        rp = tmp_path / "s.json"
+        rp.write_text(json.dumps(self._report()), encoding="utf-8")
+        assert _run(cli_path, repo_root, "validate-report", str(rp)).returncode == 0
+        proc = _run(cli_path, repo_root, "validate-report", str(rp), "--strict")
+        assert proc.returncode == 1
+        assert "verification record" in proc.stdout or "provenance" in proc.stdout

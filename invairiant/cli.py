@@ -86,6 +86,10 @@ def main(argv=None) -> int:
     pr.add_argument("--schema-only", action="store_true", help="skip the semantic checks")
     pr.add_argument("--md", action="store_true", help="structural lint of a markdown report (no schema)")
     pr.add_argument("--config", default="invairiant.config.yml", help="config for the low-score threshold")
+    pr.add_argument("--strict", action="store_true",
+                    help="promote the provenance-completeness nudges to errors: a `verified` finding "
+                         "must carry a verification record, and a report with findings must carry a "
+                         "provenance block (issue #2, staged rollout)")
     pr.add_argument("--check-citations", action="store_true",
                     help="opt-in: verify each file_lines citation points at a real file + line range "
                          "(working tree, or --commit)")
