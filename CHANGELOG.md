@@ -5,6 +5,8 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-14
+
 ### Added
 
 - **Evidence provenance — report binding + citation checks** (issue
@@ -378,7 +380,8 @@ evidence, no finding.**
 - Observations and hypotheses stay separate from verified findings.
 - Default audits use 4–6 lenses, not 20.
 
-[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.2.5...HEAD
+[Unreleased]: https://github.com/mindicator/invairiant/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mindicator/invairiant/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/mindicator/invairiant/releases/tag/v0.2.5
 [0.2.4]: https://github.com/mindicator/invairiant/releases/tag/v0.2.4
 [0.2.3]: https://github.com/mindicator/invairiant/releases/tag/v0.2.3

@@ -1,9 +1,10 @@
 # Roadmap
 
-invAIriant is at **v0.2.5**. The core protocol — evidence rules, severity
+invAIriant is at **v0.3.0**. The core protocol — evidence rules, severity
 model, lenses, schemas, prompts, the skill, and the CLI — is stable. **v0.2 was
 hardening and reach — bounded audit scopes over the same pipeline, not new
-surface.**
+surface; v0.3 adds evidence provenance & integrity (below), still no new
+lenses.**
 
 ## Guardrail: no new core lenses
 
@@ -12,19 +13,23 @@ The 28 lenses across 7 packs are the stable vocabulary. v0.2 shipped with
 judgment, when a project needs it, goes through a custom project lens
 ([docs/lens-taxonomy.md](docs/lens-taxonomy.md)) — not the core packs.
 
-## v0.3 — hardening & reach (planned)
+## v0.3 — evidence provenance & integrity
 
-**Evidence provenance & integrity** — from external review ([#2](https://github.com/mindicator/invAIriant/issues/2))
-- The deterministic layer validates evidence *shape*, not *truth*. Close the gap
-  with **mechanical integrity checks** (no judgment): bind report ↔ bundle ↔
-  commit via `commit_sha` / `bundle_hash` / `scope_hash`; check that cited
-  file/line exist; forbid `status: verified` without a `verification` object;
-  record verifier identity/model/run; have the Action confirm the report was
-  built from the PR's bundle. Staged rollout (**warn → require**) so existing
-  example reports don't break.
-- **State the honest limit** in the docs: the CLI can prove provenance and
+**Shipped** — from external review ([#2](https://github.com/mindicator/invAIriant/issues/2)).
+The deterministic layer validated evidence *shape*, not *truth*; v0.3 closes the
+gap with **mechanical integrity checks** (no judgment):
+- bind report ↔ bundle ↔ commit via `commit_sha` / `bundle_hash` / `scope_hash`
+  (`collect` emits them; the report carries them; `verify-provenance` and the
+  Action check them);
+- `validate-report --check-citations` confirms cited file/line exist;
+- `verification` records verifier identity / `model` / `run`;
+- `--strict` / the Action's `require-provenance` enforce the **warn → require**
+  rollout without breaking existing example reports.
+- **The honest limit is stated in the docs:** the CLI proves provenance and
   citation-existence, not that the agent *reasoned* correctly — and can't stop a
   determined hand-edit without signing the report at synthesis.
+
+**Still planned**
 - **Blind benchmark sets** with planted defects to measure the *agent's*
   detection / false-positive rate (an eval harness for the judgment layer).
 
