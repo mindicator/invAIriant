@@ -70,7 +70,9 @@ class TestCollectBounds:
         assert bud["files_scanned"] == 0 and bud["truncated"] is False
 
     def test_scan_fallback_skips_large_files(self, cli, tmp_path, monkeypatch):
-        monkeypatch.setattr(cli.shutil, "which", lambda _name: None)  # force the fallback
+        # _scan lives in the evidence submodule and looks up rg via its own
+        # `shutil` import; patch that module's `which` to force the fallback path.
+        monkeypatch.setattr(cli.evidence.shutil, "which", lambda _name: None)
         subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
         (tmp_path / "small.py").write_text("import os\nos.system('ls')\n")
         (tmp_path / "big.py").write_text("x = 1\n" * 200_000)  # > 512 KB

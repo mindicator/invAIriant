@@ -34,24 +34,28 @@ Homepage = "https://github.com/mindicator/invairiant"
 Documentation = "https://github.com/mindicator/invairiant/blob/main/docs/cli.md"
 
 [project.scripts]
-invairiant = "invairiant:main"
+invairiant = "invairiant.cli:main"
 
-# The CLI is a single module (cli/invairiant.py) exposed as top-level
-# `invairiant`; the framework data it needs at runtime rides along under
-# `invairiant_framework/`. force-include maps source paths into the wheel
-# without moving anything in the repo (the repo layout stays the source of
-# truth; editable/checkout runs read it directly).
+# The CLI is the `invairiant/` package (split into cli/scopes/schemas/evidence/
+# render/history/subprocesses/term for readability). The framework data it reads
+# at runtime rides along bundled INSIDE the package, at
+# `invairiant/invairiant_framework/`, which is exactly where `framework_root()`
+# looks (`here.parent / "invairiant_framework"`) when installed outside a
+# checkout. force-include maps the source trees into the wheel without moving
+# anything in the repo (the repo layout stays the source of truth; checkout runs
+# read it directly). `cli/invairiant.py` is a shim for the install-free path and
+# is intentionally NOT shipped in the wheel.
 [tool.hatch.build.targets.wheel]
-bypass-selection = true
+packages = ["invairiant"]
 [tool.hatch.build.targets.wheel.force-include]
-"cli/invairiant.py" = "invairiant.py"
-"schemas" = "invairiant_framework/schemas"
-"examples" = "invairiant_framework/examples"
-"lenses" = "invairiant_framework/lenses"
+"schemas" = "invairiant/invairiant_framework/schemas"
+"examples" = "invairiant/invairiant_framework/examples"
+"lenses" = "invairiant/invairiant_framework/lenses"
 
 # Source distribution keeps the full tree so it builds identically to a checkout.
 [tool.hatch.build.targets.sdist]
 include = [
+  "/invairiant",
   "/cli",
   "/schemas",
   "/examples",
@@ -64,7 +68,7 @@ include = [
   "/CHANGELOG.md",
 ]
 
-# Unit tests for the CLI live in tests/ and load cli/invairiant.py by path
-# (it is a single script). Run: python -m pytest -q
+# Unit tests for the CLI live in tests/ and import the `invairiant` package from
+# the repo root (see tests/conftest.py). Run: python -m pytest -q
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,15 +1,17 @@
 """Shared fixtures for the invAIriant CLI test suite.
 
-The CLI is a single script, not an installed package, so we load it by path
-with importlib. `framework_root()` (and therefore schema/lens resolution) keys
-off the module file's own location, so the imported module keeps working even
-when a test chdirs into a tmp_path.
+The CLI is the `invairiant/` package at the repo root. We put the repo root on
+sys.path and import it, so the white-box unit tests reach helpers via the
+package facade (e.g. `cli._sha256`, `cli.evidence.shutil`). `framework_root()`
+keys off the package's own location, so it keeps resolving schemas/lenses even
+when a test chdirs into a tmp_path. The end-to-end tests instead invoke the
+`cli_path` shim as a subprocess (the documented install-free entry point).
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -18,17 +20,18 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 CLI_PATH = ROOT / "cli" / "invairiant.py"
 
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 
 def _load_cli():
-    spec = importlib.util.spec_from_file_location("invairiant_under_test", CLI_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    import invairiant
+    return invairiant
 
 
 @pytest.fixture(scope="session")
 def cli():
-    """The imported CLI module (pure helpers + cmd_* functions)."""
+    """The imported `invairiant` package (facade over the split submodules)."""
     return _load_cli()
 
 

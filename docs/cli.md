@@ -34,16 +34,22 @@ pip install -e .        # or: pipx install -e .
 invairiant <command> [...]
 ```
 
-No install needed either — run the single module directly:
+No install needed either — the CLI is the `invairiant/` package (split into
+`cli` / `scopes` / `schemas` / `evidence` / `render` / `history` /
+`subprocesses` / `term` for readability), and `cli/invairiant.py` is a thin
+shim that runs it in place:
 
 ```bash
-python3 cli/invairiant.py <command> [...]
+python3 cli/invairiant.py <command> [...]     # shim; no install
+python3 -m invairiant <command> [...]         # equivalent, from the repo root
 ```
 
 It locates the framework tree via `$INVAIRIANT_HOME`, then the repo layout,
-then by searching upward from the script and the current directory — so the
-installed command works from inside a checkout. For a non-editable install
-outside a checkout, set `INVAIRIANT_HOME`.
+then by searching upward from the package and the current directory — so the
+installed command works from inside a checkout. A non-editable
+`pip install` bundles the framework data inside the package
+(`invairiant/invairiant_framework/`), so it also works with no
+`INVAIRIANT_HOME` outside a checkout.
 
 ## Commands
 

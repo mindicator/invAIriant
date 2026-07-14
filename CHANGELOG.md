@@ -19,6 +19,17 @@ follows Keep a Changelog; versions track the protocol.
 
 ### Changed
 
+- **The CLI is now a package**, `invairiant/`, split from the single
+  ~1500-line `cli/invairiant.py` into focused modules
+  (`cli` / `scopes` / `schemas` / `evidence` / `render` / `history` /
+  `subprocesses` / `term`) with a cycle-free import graph. Behaviour is
+  unchanged — the split was verified byte-for-byte equivalent across every
+  command. `cli/invairiant.py` stays as a thin shim, so `python3
+  cli/invairiant.py …` (the Action, CI, the demo, the docs) works exactly as
+  before; `python -m invairiant` and the installed `invairiant` command work
+  too. Installed wheels bundle the framework data *inside* the package
+  (`invairiant/invairiant_framework/`), so `pip install` still resolves schemas
+  with no `INVAIRIANT_HOME` outside a checkout.
 - **`ci-gate` now validates the report before it gates it** — `parse → schema
   validate → semantic validate → gate`. It no longer assumes `validate-report`
   ran first: a report that fails to parse, breaks the schema, or breaks a
