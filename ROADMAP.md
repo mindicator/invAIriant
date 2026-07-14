@@ -14,6 +14,20 @@ judgment, when a project needs it, goes through a custom project lens
 
 ## v0.3 — hardening & reach (planned)
 
+**Evidence provenance & integrity** — from external review ([#2](https://github.com/mindicator/invAIriant/issues/2))
+- The deterministic layer validates evidence *shape*, not *truth*. Close the gap
+  with **mechanical integrity checks** (no judgment): bind report ↔ bundle ↔
+  commit via `commit_sha` / `bundle_hash` / `scope_hash`; check that cited
+  file/line exist; forbid `status: verified` without a `verification` object;
+  record verifier identity/model/run; have the Action confirm the report was
+  built from the PR's bundle. Staged rollout (**warn → require**) so existing
+  example reports don't break.
+- **State the honest limit** in the docs: the CLI can prove provenance and
+  citation-existence, not that the agent *reasoned* correctly — and can't stop a
+  determined hand-edit without signing the report at synthesis.
+- **Blind benchmark sets** with planted defects to measure the *agent's*
+  detection / false-positive rate (an eval harness for the judgment layer).
+
 **Packaging & distribution**
 - **On PyPI** *(done)* — [`pip install invairiant`](https://pypi.org/project/invairiant/)
   is live; the wheel/sdist bundle the framework the CLI needs (a CI packaging
@@ -28,7 +42,8 @@ judgment, when a project needs it, goes through a custom project lens
 **Evidence base**
 - More worked case studies across project types (SaaS, data platform, infra),
   ideally from real, opted-in diffs.
-- A screenshot / GIF of the `audit-pr → PR comment` flow.
+- A GIF of the CLI seatbelt flow *(done — [`assets/invairiant-demo.gif`](assets/invairiant-demo.gif),
+  a real `vhs` recording; runnable demo in `examples/refundpilot-demo/`)*.
 
 **Memory & trends**
 - `history --json` for tooling; a compact lens-score-trend view.
