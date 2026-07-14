@@ -111,7 +111,7 @@ def _sha256(obj) -> str:
 def _need(module: str):
     try:
         return __import__(module)
-    except Exception:
+    except ImportError:
         _die(f"'{module}' is required for this command — pip install jsonschema pyyaml", 3)
 
 
@@ -135,7 +135,7 @@ def _validator(schema_name: str):
             resources.append((rid, Resource.from_contents(data)))
         registry = Registry().with_resources(resources)
         return Draft202012Validator(_load_schema(schema_name), registry=registry)
-    except Exception:
+    except ImportError:
         # Older jsonschema without `referencing`: validate without cross-refs.
         return Draft202012Validator(_load_schema(schema_name))
 
@@ -230,7 +230,7 @@ def cmd_validate_config(args) -> int:
             continue
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except (OSError, yaml.YAMLError) as exc:
             print(f"  ✗ {p}: invalid YAML: {exc}")
             total += 1
             continue
@@ -256,7 +256,7 @@ def _repo_root() -> Path:
                            capture_output=True, text=True, timeout=5)
         if p.returncode == 0 and p.stdout.strip():
             return Path(p.stdout.strip())
-    except Exception:  # noqa: BLE001
+    except (OSError, subprocess.SubprocessError):
         pass
     return Path.cwd()
 
@@ -294,15 +294,20 @@ def _sanitize(s):
     return s[:600]
 
 
-def _report_threshold(config_path: str) -> float:
+def _report_threshold(config_path) -> float:
+    if not config_path:
+        return 6.0
     try:
         import yaml
+    except ImportError:
+        return 6.0
+    try:
         p = Path(config_path)
         if p.exists():
             cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
             return float((cfg.get("severity_policy") or {}).get("low_score_threshold", 6.0))
-    except Exception:  # noqa: BLE001
-        pass
+    except (OSError, ValueError, TypeError, yaml.YAMLError):
+        pass  # unreadable / malformed config → default threshold
     return 6.0
 
 
@@ -362,7 +367,7 @@ def _semantic_report_errors(data: dict, low_threshold: float):
             if line.strip():
                 try:
                     rejected.add(json.loads(line).get("claim_key"))
-                except Exception:  # noqa: BLE001
+                except (json.JSONDecodeError, AttributeError):
                     pass
         for f in findings:
             if _claim_key(f.get("claim", "")) in rejected:
@@ -406,7 +411,7 @@ def cmd_validate_report(args) -> int:
             continue
         try:
             data = json.loads(text)
-        except Exception as exc:  # noqa: BLE001
+        except json.JSONDecodeError as exc:
             print(f"  ✗ {p}: invalid JSON: {exc}")
             total += 1
             continue
@@ -508,7 +513,7 @@ def _run(cmd: list, timeout: int = 60):
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout, p.stderr
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, subprocess.SubprocessError) as exc:
         return None, "", str(exc)
 
 
@@ -526,7 +531,7 @@ def _is_probably_binary(path: Path, sniff: int = 1024) -> bool:
     try:
         with path.open("rb") as fh:
             return b"\x00" in fh.read(sniff)
-    except Exception:  # noqa: BLE001
+    except OSError:
         return True
 
 
@@ -572,7 +577,7 @@ def _scan_fileset(patterns: dict, cap: int, budget: dict, files: list) -> dict:
                 budget["skipped_large_or_binary"] += 1
                 continue
             text = p.read_text(encoding="utf-8", errors="ignore")
-        except Exception:  # noqa: BLE001
+        except OSError:
             continue
         budget["files_scanned"] += 1
         for i, line in enumerate(text.splitlines(), 1):
@@ -613,7 +618,7 @@ def _lang_stats(files: list = None) -> dict:
             if p.stat().st_size > _MAX_FILE_BYTES:
                 continue
             n = sum(1 for _ in p.open("rb"))
-        except Exception:  # noqa: BLE001
+        except OSError:
             continue
         ext = p.suffix or "(none)"
         stats[ext] = stats.get(ext, 0) + n
@@ -721,7 +726,7 @@ def _resolve_pr(args) -> dict:
                 head_name = meta.get("headRefName") or None
                 head_oid = meta.get("headRefOid") or None
                 resolver = "gh"
-            except Exception:  # noqa: BLE001
+            except (json.JSONDecodeError, AttributeError, TypeError):
                 pass
 
     # 2) Head object: reuse it if already local (checked-out PR → no network);
@@ -862,7 +867,7 @@ def _resolve_scope(args) -> dict:
                         continue
                     if idre.search(p.read_text(encoding="utf-8", errors="ignore")):
                         refs.add(f)
-                except Exception:  # noqa: BLE001
+                except OSError:
                     continue
         narrow = getattr(args, "narrow", None)
         if narrow:
@@ -937,7 +942,7 @@ def _generated_mass(scope: dict) -> dict:
             p = Path(f)
             try:
                 n = sum(1 for _ in p.open("rb")) if (p.is_file() and p.stat().st_size <= _MAX_FILE_BYTES) else 0
-            except Exception:  # noqa: BLE001
+            except OSError:
                 n = 0
             total += n
             sized.append({"file": f, "lines": n})
@@ -958,7 +963,7 @@ def _config_and_docs():
     cfg, docs = None, []
     try:
         import yaml
-    except Exception:  # noqa: BLE001
+    except ImportError:
         return cfg, docs
     p = Path("invairiant.config.yml")
     if p.exists():
@@ -983,7 +988,7 @@ def _known_rejected() -> list:
                 continue
             try:
                 out.append(json.loads(line))
-            except Exception:  # noqa: BLE001
+            except json.JSONDecodeError:
                 pass
     return out
 
@@ -1233,7 +1238,25 @@ def cmd_render_comment(args) -> int:
 # ci-gate  (the seatbelt: fail on open S0/S1)
 # --------------------------------------------------------------------------- #
 def cmd_ci_gate(args) -> int:
-    data = json.loads(Path(args.report).read_text(encoding="utf-8"))
+    p = args.report
+    path = Path(p)
+    if not path.exists():
+        _die(f"report not found: {p}", 3)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        _die(f"{p}: could not read/parse report: {exc}", 3)
+    # Self-contained contract: parse → schema validate → semantic validate → gate.
+    # Do not assume `validate-report` ran first; refuse to gate an invalid report.
+    errs = _errors(_validator("audit-report"), data, p)
+    serrs, warns = _semantic_report_errors(data, _report_threshold(getattr(args, "config", None)))
+    for w in warns:
+        print(f"  {_warn('⚠')} {p}: {w}")
+    for e in serrs:
+        print(f"  {_bad('✗')} {p}: {e}")
+    errs += len(serrs)
+    if errs:
+        _die(f"{p}: {errs} report problem(s) — refusing to gate an invalid report", 3)
     blocked = {"S0"} if args.max_severity == "S0" else {"S0", "S1"}
     open_blocking = [
         f for f in data.get("findings", [])
@@ -1271,7 +1294,7 @@ def cmd_record(args) -> int:
             if line.strip():
                 try:
                     seen.add(json.loads(line).get("audit"))
-                except Exception:  # noqa: BLE001
+                except (json.JSONDecodeError, AttributeError):
                     pass
         if audit in seen:
             print(f"audit '{audit}' is already in memory — skipping (use --force to re-record).")
@@ -1344,7 +1367,7 @@ def cmd_history(args) -> int:
                 continue
             try:
                 rec = json.loads(line)
-            except Exception:  # noqa: BLE001
+            except json.JSONDecodeError:
                 continue
             k = rec.get("claim_key")
             if k:
@@ -1419,6 +1442,7 @@ def main(argv=None) -> int:
     pg.add_argument("report")
     pg.add_argument("--max-severity", choices=["S0", "S1"], default="S1",
                     help="S1 (default) blocks S0+S1; S0 blocks only S0")
+    pg.add_argument("--config", default=None, help="config for the low-score threshold (optional)")
     pg.set_defaults(func=cmd_ci_gate)
 
     prec = sub.add_parser("record", help="append a report's distilled, sanitized memory to .invairiant/history/")

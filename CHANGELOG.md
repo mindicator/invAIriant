@@ -17,6 +17,21 @@ follows Keep a Changelog; versions track the protocol.
   truth. Additive: existing bundles and reports stay valid (the warning is a
   nudge, slated to become an error in a later release).
 
+### Changed
+
+- **`ci-gate` now validates the report before it gates it** — `parse → schema
+  validate → semantic validate → gate`. It no longer assumes `validate-report`
+  ran first: a report that fails to parse, breaks the schema, or breaks a
+  semantic rule exits **3** (`refusing to gate an invalid report`) instead of
+  being gated on a broken shape. Valid reports gate exactly as before (open
+  `S0`/`S1` → exit 1). New optional `--config` lets the gate's semantic pass read
+  the same `low_score_threshold` as `validate-report`.
+- **Internal: narrowed every `except Exception`** in the CLI to the specific
+  errors each site can raise (`ImportError`, `OSError`,
+  `subprocess.SubprocessError`, `json.JSONDecodeError`, `yaml.YAMLError`, …), so
+  an unexpected bug surfaces instead of being silently swallowed. No behavior
+  change for well-formed inputs.
+
 ## [0.2.5] — 2026-07-04
 
 ### Added

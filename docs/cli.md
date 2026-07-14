@@ -164,11 +164,18 @@ observations/rejected-hypotheses. This is the deliverable of
 `/invairiant audit-pr`. Deterministic formatting only — no posting, no
 judgment.
 
-### `invairiant ci-gate <report.json> [--max-severity S0|S1]`
-The seatbelt. Exit non-zero when the report has open blocking findings — by
-default any `S0` or `S1` whose `status` is not `rejected`; `--max-severity S0`
-blocks only `S0`. Prints the blocking findings. Wire it into CI after the agent
-files a report:
+### `invairiant ci-gate <report.json> [--max-severity S0|S1] [--config P]`
+The seatbelt. **Self-contained: it validates the report before it gates it** —
+`parse → schema validate → semantic validate → gate` — so it never assumes
+`validate-report` ran first. A report that fails to parse, breaks the schema, or
+breaks a semantic rule exits **3** (`refusing to gate an invalid report`); a
+malformed report cannot slip an `S0` past the gate behind a broken shape.
+
+Once the report is valid, it exits **non-zero (1)** when there are open blocking
+findings — by default any `S0` or `S1` whose `status` is not `rejected`;
+`--max-severity S0` blocks only `S0`. Prints the blocking findings. `--config`
+points at the config so the semantic pass reads the same `low_score_threshold`
+as `validate-report`. Wire it into CI after the agent files a report:
 
 ```yaml
 - run: python3 cli/invairiant.py ci-gate docs/audits/latest.json

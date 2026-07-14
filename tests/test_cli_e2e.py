@@ -76,13 +76,19 @@ class TestCiGate:
             "scope": "fixture",
             "findings": [
                 {"id": "L-001", "severity": "S2", "lens": "parnas",
-                 "claim": "minor", "confidence": "high", "status": "verified",
+                 "claim": "Helper name shadows a stdlib symbol locally.",
+                 "confidence": "high", "status": "verified",
                  "evidence": [{"type": "file_lines", "file": "a.py", "lines": "1"}],
-                 "risk": "low", "recommendation": "tidy"},
+                 "verification": {"verified_by": "agent-2", "method": "re-read cited lines"},
+                 "risk": "Minor readability cost; no behavioral impact.",
+                 "recommendation": "Rename the local to avoid the shadow."},
                 {"id": "L-002", "severity": "NOTE", "lens": "mcconnell",
-                 "claim": "note", "confidence": "medium", "status": "verified",
+                 "claim": "A comment references an outdated ticket id.",
+                 "confidence": "medium", "status": "verified",
                  "evidence": [{"type": "file_lines", "file": "b.py", "lines": "2"}],
-                 "risk": "n/a", "recommendation": "fyi"},
+                 "verification": {"verified_by": "agent-2", "method": "checked the tracker"},
+                 "risk": "Documentation drift only; no runtime effect.",
+                 "recommendation": "Update the comment to the current ticket."},
             ],
             "lens_scores": [],
             "hypotheses": [],
@@ -94,6 +100,36 @@ class TestCiGate:
         proc = _run(cli_path, repo_root, "ci-gate", str(rp))
         assert proc.returncode == 0, proc.stdout + proc.stderr
         assert "no open S0/S1" in proc.stdout
+
+    def test_invalid_report_is_refused_not_gated(self, cli_path, repo_root, tmp_path):
+        # ci-gate validates the report itself before gating: a schema-invalid
+        # report must be refused (exit 3), never silently passed. A malformed
+        # report could otherwise hide an S0 behind a broken shape.
+        report = {
+            "title": "broken",
+            "date": "2026-07-03",
+            "audit_type": "pr",
+            "scope": "fixture",
+            "findings": [
+                {"id": "B-001", "severity": "S0", "lens": "parnas",
+                 "claim": "too short", "confidence": "high", "status": "verified"},
+            ],
+            "lens_scores": [],
+            "hypotheses": [],
+            "summary": {"verdict": "pass", "executive_summary": "wrong",
+                        "required_actions": []},
+        }
+        rp = tmp_path / "broken.json"
+        rp.write_text(json.dumps(report), encoding="utf-8")
+        proc = _run(cli_path, repo_root, "ci-gate", str(rp))
+        assert proc.returncode == 3, proc.stdout + proc.stderr
+        assert "refusing to gate" in proc.stdout + proc.stderr
+
+    def test_unparseable_report_is_refused(self, cli_path, repo_root, tmp_path):
+        rp = tmp_path / "notjson.json"
+        rp.write_text("{ this is not json", encoding="utf-8")
+        proc = _run(cli_path, repo_root, "ci-gate", str(rp))
+        assert proc.returncode == 3, proc.stdout + proc.stderr
 
 
 # --------------------------------------------------------------------------- #
