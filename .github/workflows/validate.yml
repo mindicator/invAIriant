@@ -21,6 +21,12 @@ jobs:
         with:
           fetch-depth: 0   # full history — collect/audit works on commit ranges
 
+      - name: Content gate (no stray / sensitive / binary files)
+        # Server-side twin of the local pre-push hook (scripts/install-hooks.sh):
+        # even a push made with --no-verify, or without the hook installed, fails
+        # here if it carries a stray document / binary / credential.
+        run: bash scripts/content-gate.sh HEAD
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

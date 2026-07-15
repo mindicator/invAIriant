@@ -38,6 +38,17 @@ The check itself lives in [`scripts/release-gate.sh`](scripts/release-gate.sh)
 no CI runs yet, or any non-`success` check blocks the release. Last-resort
 override: `git push --no-verify`.
 
+The same hook also runs a **content gate**
+([`scripts/content-gate.sh`](scripts/content-gate.sh)) on **every** push,
+branches included: it refuses to push a tree carrying files that don't belong in
+this source-only framework — stray documents, credentials, archives, or any
+binary that isn't on the allowlist (the demo asset under `assets/`, the README
+banner, the audit-memory csv). It exists because an invoice PDF once reached the
+public repo by an over-broad `git add`; the same check runs in CI, so a push made
+with `--no-verify` (or without the hook installed) still fails there. Adding a
+deliberate binary? Extend `ALLOW` in the script — never to sneak a stray file
+past it.
+
 **Publishing to PyPI** (build from the tag, upload the immutable version) is a
 separate maintainer step — see [docs/publishing.md](docs/publishing.md).
 

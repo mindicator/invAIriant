@@ -5,6 +5,17 @@ follows Keep a Changelog; versions track the protocol.
 
 ## [Unreleased]
 
+### Added
+
+- **Pre-push content gate** ([`scripts/content-gate.sh`](scripts/content-gate.sh)),
+  installed by `scripts/install-hooks.sh` and mirrored as a CI step. It refuses to
+  push a tree carrying files that don't belong in this source-only framework —
+  stray documents, credentials, archives, or any binary not on the allowlist (the
+  `assets/` demo, the README banner, the audit-memory csv). Runs on **every** push
+  (branches included) and again server-side in CI, so a `--no-verify` push or a
+  missing local hook still fails. Defense-in-depth after an invoice PDF reached the
+  public repo through an over-broad `git add`.
+
 ## [0.3.0] — 2026-07-14
 
 ### Added
